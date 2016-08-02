@@ -704,13 +704,30 @@ function _mostDataPoints(options) {
         tempFrame.remove();
     }
     else{          //other browsers
-        var base64data = $.base64.encode(excelFile);
-        var blob = b64toBlob(base64data, "application/vnd.ms-excel");
-        var blobUrl = URL.createObjectURL(blob);
-        $("<a></a>").attr("download", filename)
-                    .attr("href", blobUrl)
-                    .append("<div id='download-me-now'></div>")
-                    .appendTo("body");
+        var uri = 'data:application/vnd.ms-excel;base64,',
+            template = excelFile,
+            base64 = function(s) {
+                return window.btoa(unescape(encodeURIComponent(s)));
+            },
+            format = function(s, c) {
+                return s.replace(/{(\w+)}/g, function(m, p) {
+                    return c[p];
+                });
+            };
+        // get the table data
+        var table = excel;
+        var ctx = {
+            worksheet: filename,
+            table: table
+        };
+        var blobUrl = uri + base64(format(template, ctx));
+        // var base64data = $.base64.encode(excelFile);
+        // var blob = b64toBlob(base64data, "application/vnd.ms-excel");
+        // var blobUrl = URL.createObjectURL(blob);
+        $("<a></a>").attr("download", filename+'.xls')
+            .attr("href", blobUrl)
+            .append("<div id='download-me-now'></div>")
+            .appendTo("body");
         $("#download-me-now").click().remove();
     }
 }
@@ -847,70 +864,7 @@ function parseString(data, isPdf){
 
 
     return content_data;
-};/** @jsx React.DOM */
-
-function topPosition(domElt) {
-    if (!domElt) {
-        return 0;
-    }
-    return domElt.offsetTop + topPosition(domElt.offsetParent);
-}
-
-var InfiniteScroll = React.createClass({
-    displayName: 'InfiniteScroll',
-    propTypes: {
-        pageStart: React.PropTypes.number,
-        threshold: React.PropTypes.number,
-        loadMore: React.PropTypes.func.isRequired,
-        hasMore: React.PropTypes.bool
-    },
-    getDefaultProps: function () {
-        return {
-            pageStart: 0,
-            hasMore: false,
-            threshold: 250
-        };
-    },
-    componentDidMount: function () {
-        this.pageLoaded = this.props.pageStart;
-        this.attachScrollListener();
-    },
-    componentDidUpdate: function () {
-        this.attachScrollListener();
-    },
-    render: function () {
-        var props = this.props;
-        return React.DOM.div(null, props.children, props.hasMore && (props.loader || InfiniteScroll._defaultLoader));
-    },
-    scrollListener: function () {
-        var el = this.getDOMNode();
-        var scrollTop = (window.pageYOffset !== undefined) ? window.pageYOffset : (document.documentElement || document.body.parentNode || document.body).scrollTop;
-        if (topPosition(el) + el.offsetHeight - scrollTop - window.innerHeight < Number(this.props.threshold)) {
-            this.detachScrollListener();
-            // call loadMore after detachScrollListener to allow
-            // for non-async loadMore functions
-            this.props.loadMore(this.pageLoaded += 1);
-        }
-    },
-    attachScrollListener: function () {
-        if (!this.props.hasMore) {
-            return;
-        }
-        window.addEventListener('scroll', this.scrollListener);
-        window.addEventListener('resize', this.scrollListener);
-        this.scrollListener();
-    },
-    detachScrollListener: function () {
-        window.removeEventListener('scroll', this.scrollListener);
-        window.removeEventListener('resize', this.scrollListener);
-    },
-    componentWillUnmount: function () {
-        this.detachScrollListener();
-    }
-});
-InfiniteScroll.setDefaultLoader = function (loader) {
-    InfiniteScroll._defaultLoader = loader;
-};;/**
+};/**
  * a addon menu item that displays additional text on hover, useful for displaying column definitions
  */
 const InfoBox = React.createClass({displayName: "InfoBox",
