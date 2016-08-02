@@ -87,46 +87,18 @@ function exportToExcel(data, filename, table){
                     return c[p];
                 });
             };
-        // get the table data
         var table = excel;
         var ctx = {
             worksheet: filename,
             table: table
         };
         var blobUrl = uri + base64(format(template, ctx));
-        // var base64data = $.base64.encode(excelFile);
-        // var blob = b64toBlob(base64data, "application/vnd.ms-excel");
-        // var blobUrl = URL.createObjectURL(blob);
         $("<a></a>").attr("download", filename+'.xls')
             .attr("href", blobUrl)
             .append("<div id='download-me-now'></div>")
             .appendTo("body");
         $("#download-me-now").click().remove();
     }
-}
-
-function b64toBlob(b64Data, contentType, sliceSize) {
-    contentType = contentType || '';
-    sliceSize = sliceSize || 512;
-
-    var byteCharacters = atob(b64Data);
-    var byteArrays = [];
-
-    for (var offset = 0; offset < byteCharacters.length; offset += sliceSize) {
-        var slice = byteCharacters.slice(offset, offset + sliceSize);
-
-        var byteNumbers = new Array(slice.length);
-        for (var i = 0; i < slice.length; i++) {
-            byteNumbers[i] = slice.charCodeAt(i);
-        }
-
-        var byteArray = new Uint8Array(byteNumbers);
-
-        byteArrays.push(byteArray);
-    }
-
-    var blob = new Blob(byteArrays, {type: contentType});
-    return blob;
 }
 
 function exportToPDF(data, filename, table){
