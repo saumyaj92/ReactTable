@@ -30,7 +30,7 @@ const dateSorter = {
         return new Date(a[this.colTag]) - new Date(b[this.colTag]);
     },
     desc: function (a, b) {
-        return -1 * dateSorter.asc.call(null, a, b);
+        return new Date(b[this.colTag]) - new Date(a[this.colTag]); //-1 * dateSorter.asc.call(null, a, b);
     }
 };
 
@@ -48,7 +48,7 @@ function getSortFunction(columnDef, sortType) {
     // if the user provided a custom sort function for the column, use that instead
     if (columnDef.sort && columnDef[sortType])
         sorter = columnDef.sort[sortType].bind(columnDef);
-    else if (format === "date")
+    else if (format === "date" || format === "DATE")
         sorter = dateSorter[sortType].bind(columnDef);
     return sorter;
 }
