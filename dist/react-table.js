@@ -1996,7 +1996,7 @@ const dateSorter = {
         return new Date(a[this.colTag]) - new Date(b[this.colTag]);
     },
     desc: function (a, b) {
-        return -1 * dateSorter.asc.call(null, a, b);
+        return new Date(b[this.colTag]) - new Date(a[this.colTag]); //-1 * dateSorter.asc.call(null, a, b);
     }
 };
 
