@@ -198,7 +198,7 @@ function buildMenu(options) {
                 className: "fa fa-remove"}), " Remove Column")
         ],
         unselect: [
-            React.createElement("div", {className: "menu-item", onClick: table.clearAllRowSelections}, React.createElement("i", {
+            React.createElement("div", {className: "menu-item", onClick: table.handleUnselect}, React.createElement("i", {
                 className: "fa fa-angle-up"}), " Unselect All Rows")
         ]
     };
@@ -212,10 +212,9 @@ function buildMenu(options) {
         if (!(table.props.filtering && table.props.filtering.disable))
             addMenuItems(menuItems, availableDefaultMenuItems.filter);
         addMenuItems(menuItems, availableDefaultMenuItems.summarize);
-        if (!isFirstColumn){
+        if (!isFirstColumn)
             addMenuItems(menuItems, availableDefaultMenuItems.remove);
-            addMenuItems(menuItems, availableDefaultMenuItems.unselect);
-        }
+        addMenuItems(menuItems, availableDefaultMenuItems.unselect);
     }
 
     var customMenuItems = buildCustomMenuItems(table, columnDef);
@@ -1045,6 +1044,7 @@ var ReactTable = React.createClass({displayName: "ReactTable",
         afterColumnRemove: React.PropTypes.func,
         beforeColumnAdd: React.PropTypes.func,
         onSelectCallback: React.PropTypes.func,
+        onUnselectAllCallback: React.PropTypes.func,
         onSummarySelectCallback: React.PropTypes.func,
         onRightClick: React.PropTypes.func,
         /**
@@ -1139,6 +1139,7 @@ var ReactTable = React.createClass({displayName: "ReactTable",
     handleClearSubtotal: ReactTableHandleClearSubtotal,
     handlePageClick: ReactTableHandlePageClick,
     handleSelect: ReactTableHandleSelect,
+    handleUnselect: ReactTableHandleUnselectAll,
     handleCollapseAll: function () {
         this.state.rootNode.foldSubTree();
         this.state.rootNode.collapseImmediateChildren();
@@ -1740,6 +1741,10 @@ function ReactTableHandleSelect(selectedRow) {
     else if (this.props.onSummarySelectCallback)
         this.props.onSummarySelectCallback(selectedRow, this.toggleSelectSummaryRow(generateSectorKey(selectedRow.sectorPath)));
 
+}
+
+function ReactTableHandleUnselectAll(){
+    this.props.onUnselectAllCallback(this.clearAllRowSelections());
 }
 
 function ReactTableHandleColumnFilter(columnDefToFilterBy, e, dontSet) {

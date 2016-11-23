@@ -79,7 +79,7 @@ function buildMenu(options) {
                 className="fa fa-remove"></i> Remove Column</div>
         ],
         unselect: [
-            <div className="menu-item" onClick={table.clearAllRowSelections}><i
+            <div className="menu-item" onClick={table.handleUnselect}><i
                 className="fa fa-angle-up"></i> Unselect All Rows</div>
         ]
     };
@@ -93,10 +93,9 @@ function buildMenu(options) {
         if (!(table.props.filtering && table.props.filtering.disable))
             addMenuItems(menuItems, availableDefaultMenuItems.filter);
         addMenuItems(menuItems, availableDefaultMenuItems.summarize);
-        if (!isFirstColumn){
+        if (!isFirstColumn)
             addMenuItems(menuItems, availableDefaultMenuItems.remove);
-            addMenuItems(menuItems, availableDefaultMenuItems.unselect);
-        }
+        addMenuItems(menuItems, availableDefaultMenuItems.unselect);
     }
 
     var customMenuItems = buildCustomMenuItems(table, columnDef);

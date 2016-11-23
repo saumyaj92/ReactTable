@@ -31,6 +31,7 @@ var ReactTable = React.createClass({
         afterColumnRemove: React.PropTypes.func,
         beforeColumnAdd: React.PropTypes.func,
         onSelectCallback: React.PropTypes.func,
+        onUnselectAllCallback: React.PropTypes.func,
         onSummarySelectCallback: React.PropTypes.func,
         onRightClick: React.PropTypes.func,
         /**
@@ -125,6 +126,7 @@ var ReactTable = React.createClass({
     handleClearSubtotal: ReactTableHandleClearSubtotal,
     handlePageClick: ReactTableHandlePageClick,
     handleSelect: ReactTableHandleSelect,
+    handleUnselect: ReactTableHandleUnselectAll,
     handleCollapseAll: function () {
         this.state.rootNode.foldSubTree();
         this.state.rootNode.collapseImmediateChildren();

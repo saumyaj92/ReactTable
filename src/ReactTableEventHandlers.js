@@ -52,6 +52,10 @@ function ReactTableHandleSelect(selectedRow) {
 
 }
 
+function ReactTableHandleUnselectAll(){
+    this.props.onUnselectAllCallback(this.clearAllRowSelections());
+}
+
 function ReactTableHandleColumnFilter(columnDefToFilterBy, e, dontSet) {
     if (typeof dontSet !== "boolean")
         dontSet = undefined;
