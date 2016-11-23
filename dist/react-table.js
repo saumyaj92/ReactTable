@@ -196,6 +196,10 @@ function buildMenu(options) {
         remove: [
             React.createElement("div", {className: "menu-item", onClick: table.handleRemove.bind(null, columnDef)}, React.createElement("i", {
                 className: "fa fa-remove"}), " Remove Column")
+        ],
+        unselect: [
+            React.createElement("div", {className: "menu-item", onClick: table.clearAllRowSelections}, React.createElement("i", {
+                className: "fa fa-angle-up"}), " Unselect All Rows")
         ]
     };
     if (table.props.defaultMenuItems) {
@@ -208,8 +212,10 @@ function buildMenu(options) {
         if (!(table.props.filtering && table.props.filtering.disable))
             addMenuItems(menuItems, availableDefaultMenuItems.filter);
         addMenuItems(menuItems, availableDefaultMenuItems.summarize);
-        if (!isFirstColumn)
+        if (!isFirstColumn){
             addMenuItems(menuItems, availableDefaultMenuItems.remove);
+            addMenuItems(menuItems, availableDefaultMenuItems.unselect);
+        }
     }
 
     var customMenuItems = buildCustomMenuItems(table, columnDef);
