@@ -77,27 +77,28 @@ function exportToExcel(data, filename, table){
         tempFrame.remove();
     }
     else{          //other browsers
-        var uri = 'data:application/vnd.ms-excel;base64,',
-            template = excelFile,
-            base64 = function(s) {
-                return window.btoa(unescape(encodeURIComponent(s)));
-            },
-            format = function(s, c) {
-                return s.replace(/{(\w+)}/g, function(m, p) {
-                    return c[p];
-                });
-            };
-        var table = excel;
-        var ctx = {
-            worksheet: filename,
-            table: table
-        };
-        var blobUrl = uri + base64(format(template, ctx));
-        $("<a></a>").attr("download", filename+'.xls')
-            .attr("href", blobUrl)
-            .append("<div id='download-me-now'></div>")
-            .appendTo("body");
-        $("#download-me-now").click().remove();
+        // var uri = 'data:application/vnd.ms-excel;base64,',
+        //     template = excelFile,
+        //     base64 = function(s) {
+        //         return window.btoa(unescape(encodeURIComponent(s)));
+        //     },
+        //     format = function(s, c) {
+        //         return s.replace(/{(\w+)}/g, function(m, p) {
+        //             return c[p];
+        //         });
+        //     };
+        // var table = excel;
+        // var ctx = {
+        //     worksheet: filename,
+        //     table: table
+        // };
+        var blobUrl = new Blob([excelFile], {type: 'data:application/vnd.ms-excel;charset=utf-8'});
+        saveAs(blobUrl,filename+'.xls');
+        // $("<a></a>").attr("download", filename+'.xls')
+        //     .attr("href", blobUrl)
+        //     .append("<div id='download-me-now'></div>")
+        //     .appendTo("body");
+        // $("#download-me-now").click().remove();
     }
 }
 
