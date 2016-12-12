@@ -243,6 +243,16 @@ function ReactTableHandlePageClick(page) {
 
 }
 
+function ReactTableHandleShowAllRows(){
+    $(this.getDOMNode()).find(".rt-scrollable").get(0).addEventListener('scroll', this.handleScroll);
+    this.setState({
+        disableInfiniteScrolling: false,
+        disablePagination: true,
+        pageSize: 50,
+        upperVisualBound: 50
+    });
+}
+
 /*
  * ----------------------------------------------------------------------
  * Helpers

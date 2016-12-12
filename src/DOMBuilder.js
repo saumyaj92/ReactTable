@@ -308,10 +308,15 @@ function buildFirstCellForRow() {
 }
 
 function buildFooter(table, paginationAttr) {
-    return table.props.columnDefs.length > 0 && !table.props.disablePagination ?
+    if(table.state.disableInfiniteScrolling === undefined){
+        table.state.disableInfiniteScrolling = table.props.disableInfiniteScrolling;
+    }
+    return table.props.columnDefs.length > 0 && !table.state.disablePagination ?
         (<PageNavigator
             items={paginationAttr.allPages.slice(paginationAttr.pageDisplayRange.start, paginationAttr.pageDisplayRange.end)}
             activeItem={table.state.currentPage}
             numPages={paginationAttr.pageEnd}
-            handleClick={table.handlePageClick}/>) : null;
+            handleClick={table.handlePageClick}
+            handleShowAllRows={table.handleShowAllRows}
+        />) : null;
 }
