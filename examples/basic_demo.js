@@ -76,13 +76,15 @@ $(function () {
             //filtering: {
             //    disable: true
             //},
-            disablePagination: true,
+            disablePagination: false,
+            disableInfiniteScrolling: true,
             sortBy: [{colTag: "test_score", sortType: "asc"}],
             subtotalBy: [{
                 colTag: "nationality", text: "Nationality"
             }],
             rowKey: 'id',
             data: testData,
+            pageSize: 40,
             onRightClick: function (row, event) {
                 console.log(row);
                 console.log(state);

@@ -463,7 +463,7 @@ var PageNavigator = React.createClass({
         return (
             <ul className={prevClass} className="pagination pull-right">
                 <li>
-                    <a onClick={this.showAllRows.bind(null)}>Show All</a>
+                    <a onClick={this.showAllRows}>Show All</a>
                 </li>
                 <li className={nextClass}>
                     <a className={prevClass}

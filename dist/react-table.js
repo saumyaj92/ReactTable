@@ -1482,7 +1482,7 @@ var PageNavigator = React.createClass({displayName: "PageNavigator",
         return (
             React.createElement("ul", {className: prevClass, className: "pagination pull-right"}, 
                 React.createElement("li", null, 
-                    React.createElement("a", {onClick: this.showAllRows.bind(null)}, "Show All")
+                    React.createElement("a", {onClick: this.showAllRows}, "Show All")
                 ), 
                 React.createElement("li", {className: nextClass}, 
                     React.createElement("a", {className: prevClass, 
