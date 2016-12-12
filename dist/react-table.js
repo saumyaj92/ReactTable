@@ -427,12 +427,17 @@ function buildFirstCellForRow() {
 }
 
 function buildFooter(table, paginationAttr) {
-    return table.props.columnDefs.length > 0 && !table.props.disablePagination ?
+    if(table.state.disableInfiniteScrolling === undefined){
+        table.state.disableInfiniteScrolling = table.props.disableInfiniteScrolling;
+    }
+    return table.props.columnDefs.length > 0 && !table.state.disablePagination ?
         (React.createElement(PageNavigator, {
             items: paginationAttr.allPages.slice(paginationAttr.pageDisplayRange.start, paginationAttr.pageDisplayRange.end), 
             activeItem: table.state.currentPage, 
             numPages: paginationAttr.pageEnd, 
-            handleClick: table.handlePageClick})) : null;
+            handleClick: table.handlePageClick, 
+            handleShowAllRows: table.handleShowAllRows}
+        )) : null;
 }
 ;/**
  * find the right sector name for the current row for the given level of row grouping
@@ -1139,6 +1144,7 @@ var ReactTable = React.createClass({displayName: "ReactTable",
     handleSubtotalBy: ReactTableHandleSubtotalBy,
     handleClearSubtotal: ReactTableHandleClearSubtotal,
     handlePageClick: ReactTableHandlePageClick,
+    handleShowAllRows: ReactTableHandleShowAllRows,
     handleSelect: ReactTableHandleSelect,
     handleUnselect: ReactTableHandleUnselectAll,
     handleCollapseAll: function () {
@@ -1271,6 +1277,9 @@ var ReactTable = React.createClass({displayName: "ReactTable",
         const height = $target.height();
         const totalHeight = $target.find("tbody").height();
         const avgRowHeight = totalHeight / $target.find("tbody > tr").length;
+        if(this.state.pageSize === undefined){
+            this.state.pageSize = this.props.pageSize;
+        }
         /**
          * always update lastScrollTop on scroll event - it helps us determine
          * whether the next scroll event is up or down
@@ -1280,17 +1289,17 @@ var ReactTable = React.createClass({displayName: "ReactTable",
          * we determine the correct display boundaries by keeping the distance between lower and upper visual bound
          * to some constant multiple of pageSize
          */
-        const rowDisplayBoundry = 2 * this.props.pageSize;
+        const rowDisplayBoundry = 2 * this.state.pageSize;
         if (scrollTop < this.state.lastScrollTop && scrollTop <= 0) {
             // up scroll limit triggered
-            newState.lowerVisualBound = Math.max(this.state.lowerVisualBound - this.props.pageSize, 0);
+            newState.lowerVisualBound = Math.max(this.state.lowerVisualBound - this.state.pageSize, 0);
             newState.upperVisualBound = newState.lowerVisualBound + rowDisplayBoundry;
             /**
              * if top most rows reached, do nothing, otherwise reset scrollTop to preserve current view
              */
             if (!(newState.lowerVisualBound === 0))
                 setTimeout(function () {
-                    $target.scrollTop(Math.max(scrollTop + this.props.pageSize * avgRowHeight, 0));
+                    $target.scrollTop(Math.max(scrollTop + this.state.pageSize * avgRowHeight, 0));
                 }.bind(this));
 
         } else if (scrollTop > this.state.lastScrollTop && (scrollTop + height) >= totalHeight) {
@@ -1299,7 +1308,7 @@ var ReactTable = React.createClass({displayName: "ReactTable",
              * we either increment upperVisualBound by a single page (specified via props.pageSize) or the max rows that can be displayed
              * we know the end has been reached if upperVisualBound + pageSize > maxRows
              */
-            newState.upperVisualBound = this.state.upperVisualBound + this.props.pageSize > this.state.maxRows ? this.state.maxRows : this.state.upperVisualBound + this.props.pageSize;
+            newState.upperVisualBound = this.state.upperVisualBound + this.state.pageSize > this.state.maxRows ? this.state.maxRows : this.state.upperVisualBound + this.state.pageSize;
             newState.lowerVisualBound = Math.max(newState.upperVisualBound - rowDisplayBoundry, 0);
             /**
              * if previous upperVisualBound is the default (props.pageSize), it could actually be greater than the current
@@ -1317,7 +1326,10 @@ var ReactTable = React.createClass({displayName: "ReactTable",
     /* ----------------------------------------- */
 
     componentDidMount: function () {
-        if (!this.props.disableInfiniteScrolling)
+        if(this.state.disableInfiniteScrolling === undefined){
+            this.state.disableInfiniteScrolling = this.props.disableInfiniteScrolling;
+        }
+        if (!this.state.disableInfiniteScrolling)
             $(this.getDOMNode()).find(".rt-scrollable").get(0).addEventListener('scroll', this.handleScroll);
         setTimeout(function () {
             adjustHeaders.call(this);
@@ -1338,8 +1350,11 @@ var ReactTable = React.createClass({displayName: "ReactTable",
     componentWillMount: function () {
     },
     componentWillUnmount: function () {
+        if(this.state.disableInfiniteScrolling === undefined){
+            this.state.disableInfiniteScrolling = this.props.disableInfiniteScrolling;
+        }
         window.removeEventListener('resize', adjustHeaders.bind(this));
-        if (this.props.disableInfiniteScrolling)
+        if (this.state.disableInfiniteScrolling)
             $(this.getDOMNode()).find(".rt-scrollable").get(0).removeEventListener('scroll', this.handleScroll);
     },
     componentDidUpdate: function () {
@@ -1355,11 +1370,14 @@ var ReactTable = React.createClass({displayName: "ReactTable",
         // maxRows is referenced later during event handling to determine upperVisualBound
         this.state.maxRows = rasterizedData.length;
 
+        if(this.state.disableInfiniteScrolling === undefined){
+            this.state.disableInfiniteScrolling = this.props.disableInfiniteScrolling;
+        }
+
         // TODO merge lower&upper visual bound into state, refactor getPaginationAttr
         var paginationAttr = getPaginationAttr(this, rasterizedData);
-
         var rowsToDisplay = [];
-        if (this.props.disableInfiniteScrolling)
+        if (this.state.disableInfiniteScrolling)
             rowsToDisplay = rasterizedData.slice(paginationAttr.lowerVisualBound, paginationAttr.upperVisualBound + 1).map(rowMapper, this);
         else
             rowsToDisplay = rasterizedData.slice(this.state.lowerVisualBound, this.state.upperVisualBound + 1).map(rowMapper, this);
@@ -1383,7 +1401,7 @@ var ReactTable = React.createClass({displayName: "ReactTable",
                         )
                     )
                 ), 
-                this.props.disableInfiniteScrolling ? buildFooter(this, paginationAttr) : null
+                this.state.disableInfiniteScrolling ? buildFooter(this, paginationAttr) : null
             )
         );
     }
@@ -1441,6 +1459,9 @@ var PageNavigator = React.createClass({displayName: "PageNavigator",
         if (index <= this.props.numPages && index >= 1)
             this.props.handleClick(index);
     },
+    showAllRows: function(){
+        this.props.handleShowAllRows();
+    },
     render: function () {
         var self = this;
         var cx = React.addons.classSet;
@@ -1460,6 +1481,9 @@ var PageNavigator = React.createClass({displayName: "PageNavigator",
         });
         return (
             React.createElement("ul", {className: prevClass, className: "pagination pull-right"}, 
+                React.createElement("li", null, 
+                    React.createElement("a", {onClick: this.showAllRows.bind(null)}, "Show All")
+                ), 
                 React.createElement("li", {className: nextClass}, 
                     React.createElement("a", {className: prevClass, 
                        onClick: this.props.handleClick.bind(null, this.props.activeItem - 1)}, "«")
@@ -1653,12 +1677,18 @@ function resolveExtraStyles(generatedKey, extraStyles) {
 
 function getPaginationAttr(table, data) {
     var result = {};
+    if(table.state.disablePagination === undefined){
+        table.state.disablePagination = table.props.disablePagination;
+    }
+    if(table.state.pageSize === undefined){
+        table.state.pageSize = table.props.pageSize;
+    }
 
-    if (table.props.disablePagination) {
+    if (table.state.disablePagination) {
         result.lowerVisualBound = 0;
         result.upperVisualBound = data.length
     } else {
-        result.pageSize = table.props.pageSize || 50;
+        result.pageSize = table.state.pageSize || 50;
         result.maxDisplayedPages = table.props.maxDisplayedPages || 10;
 
         result.pageStart = 1;
@@ -1673,6 +1703,7 @@ function getPaginationAttr(table, data) {
 
         result.lowerVisualBound = (table.state.currentPage - 1) * result.pageSize;
         result.upperVisualBound = Math.min(table.state.currentPage * result.pageSize - 1, data.length);
+
     }
 
     return result;
@@ -1933,6 +1964,16 @@ function ReactTableHandlePageClick(page) {
         currentPage: page
     });
 
+}
+
+function ReactTableHandleShowAllRows(){
+    $(this.getDOMNode()).find(".rt-scrollable").get(0).addEventListener('scroll', this.handleScroll);
+    this.setState({
+        disableInfiniteScrolling: false,
+        disablePagination: true,
+        pageSize: 50,
+        upperVisualBound: 50
+    });
 }
 
 /*
