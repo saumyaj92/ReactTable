@@ -31,7 +31,7 @@ function aggregateSector(partitionResult, columnDefs, subtotalBy) {
 
 function resolvePartitionName(subtotalBy, row) {
     var sectorName = "", sortIndex = "";
-    if (subtotalBy.subtotalByRange) {
+    if (subtotalBy.subtotalByRange && row[subtotalBy.colTag]) {
         for (var i = 0; i < subtotalBy.subtotalByRange.length; i++) {
             if (row[subtotalBy.colTag] < subtotalBy.subtotalByRange[i]) {
                 sectorName = subtotalBy.text + " " + (i != 0 ? subtotalBy.subtotalByRange[i - 1] : 0) + " - " + subtotalBy.subtotalByRange[i];
