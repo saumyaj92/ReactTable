@@ -260,11 +260,11 @@ function ReactTableHandleShowAllRows(){
  */
 function partitionNumberLine(partitions) {
     var i, stringBuckets, floatBuckets = [];
-    stringBuckets = partitions.split(",");
+    stringBuckets = partitions.replace(/m/g,"000").split(",");
     for (i = 0; i < stringBuckets.length; i++) {
         var floatBucket = parseFloat(stringBuckets[i]);
         if (!isNaN(floatBucket))
-            floatBuckets.push(floatBucket);
+            floatBuckets.push(floatBucket/1000);
         floatBuckets.sort(function (a, b) {
             return a - b;
         });

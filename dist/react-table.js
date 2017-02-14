@@ -475,13 +475,13 @@ function resolvePartitionName(subtotalBy, row) {
     if (subtotalBy.subtotalByRange && row[subtotalBy.colTag]) {
         for (var i = 0; i < subtotalBy.subtotalByRange.length; i++) {
             if (row[subtotalBy.colTag] < subtotalBy.subtotalByRange[i]) {
-                sectorName = subtotalBy.text + " " + (i != 0 ? subtotalBy.subtotalByRange[i - 1] : 0) + " - " + subtotalBy.subtotalByRange[i];
+                sectorName = subtotalBy.text + " " + (i != 0 ? (subtotalBy.subtotalByRange[i - 1] * 1000) : 0) + " - " + (subtotalBy.subtotalByRange[i] * 1000);
                 sortIndex = i;
                 break;
             }
         }
         if (!sectorName) {
-            sectorName = subtotalBy.text + " " + subtotalBy.subtotalByRange[subtotalBy.subtotalByRange.length - 1] + "+";
+            sectorName = subtotalBy.text + " " + (subtotalBy.subtotalByRange[subtotalBy.subtotalByRange.length - 1] * 1000) + "+";
             sortIndex = i + 1;
         }
     }
@@ -1983,11 +1983,11 @@ function ReactTableHandleShowAllRows(){
  */
 function partitionNumberLine(partitions) {
     var i, stringBuckets, floatBuckets = [];
-    stringBuckets = partitions.split(",");
+    stringBuckets = partitions.replace(/m/g,"000").split(",");
     for (i = 0; i < stringBuckets.length; i++) {
         var floatBucket = parseFloat(stringBuckets[i]);
         if (!isNaN(floatBucket))
-            floatBuckets.push(floatBucket);
+            floatBuckets.push(floatBucket/1000);
         floatBuckets.sort(function (a, b) {
             return a - b;
         });
