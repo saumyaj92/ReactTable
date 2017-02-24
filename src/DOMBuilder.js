@@ -78,6 +78,10 @@ function buildMenu(options) {
             <div className="menu-item" onClick={table.handleRemove.bind(null, columnDef)}><i
                 className="fa fa-remove"></i> Remove Column</div>
         ],
+        showselect: [
+            <div className="menu-item" onClick={table.handleShowSelected}><i
+                className="fa fa-sort-amount-desc"></i> Show Selected Rows</div>
+        ],
         unselect: [
             <div className="menu-item" onClick={table.handleUnselect}><i
                 className="fa fa-angle-up"></i> Unselect All Rows</div>
@@ -95,6 +99,7 @@ function buildMenu(options) {
         addMenuItems(menuItems, availableDefaultMenuItems.summarize);
         if (!isFirstColumn)
             addMenuItems(menuItems, availableDefaultMenuItems.remove);
+        addMenuItems(menuItems, availableDefaultMenuItems.showselect);
         addMenuItems(menuItems, availableDefaultMenuItems.unselect);
     }
 

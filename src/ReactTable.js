@@ -127,6 +127,7 @@ var ReactTable = React.createClass({
     handlePageClick: ReactTableHandlePageClick,
     handleShowAllRows: ReactTableHandleShowAllRows,
     handleSelect: ReactTableHandleSelect,
+    handleShowSelected: ReactTableHandleShowSelected,
     handleUnselect: ReactTableHandleUnselectAll,
     handleCollapseAll: function () {
         this.state.rootNode.foldSubTree();

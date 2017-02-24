@@ -56,6 +56,15 @@ function ReactTableHandleUnselectAll(){
     this.props.onUnselectAllCallback(this.clearAllRowSelections());
 }
 
+function ReactTableHandleShowSelected() {
+
+    var newState = this.state;
+    if (this.state.sortBy.length > 0 && _.keys(this.state.selectedDetailRows).length > 0)
+        newState.rootNode.sortSelectedUnSelectedNodes(this.state.selectedDetailRows,
+            convertSortByToFuncs(this.state.columnDefs, this.state.sortBy));
+    this.setState(newState);
+}
+
 function ReactTableHandleColumnFilter(columnDefToFilterBy, e, dontSet) {
     if (typeof dontSet !== "boolean")
         dontSet = undefined;

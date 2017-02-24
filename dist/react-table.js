@@ -197,6 +197,10 @@ function buildMenu(options) {
             React.createElement("div", {className: "menu-item", onClick: table.handleRemove.bind(null, columnDef)}, React.createElement("i", {
                 className: "fa fa-remove"}), " Remove Column")
         ],
+        showselect: [
+            React.createElement("div", {className: "menu-item", onClick: table.handleShowSelected}, React.createElement("i", {
+                className: "fa fa-sort-amount-desc"}), " Show Selected Rows")
+        ],
         unselect: [
             React.createElement("div", {className: "menu-item", onClick: table.handleUnselect}, React.createElement("i", {
                 className: "fa fa-angle-up"}), " Unselect All Rows")
@@ -214,6 +218,7 @@ function buildMenu(options) {
         addMenuItems(menuItems, availableDefaultMenuItems.summarize);
         if (!isFirstColumn)
             addMenuItems(menuItems, availableDefaultMenuItems.remove);
+        addMenuItems(menuItems, availableDefaultMenuItems.showselect);
         addMenuItems(menuItems, availableDefaultMenuItems.unselect);
     }
 
@@ -1146,6 +1151,7 @@ var ReactTable = React.createClass({displayName: "ReactTable",
     handlePageClick: ReactTableHandlePageClick,
     handleShowAllRows: ReactTableHandleShowAllRows,
     handleSelect: ReactTableHandleSelect,
+    handleShowSelected: ReactTableHandleShowSelected,
     handleUnselect: ReactTableHandleUnselectAll,
     handleCollapseAll: function () {
         this.state.rootNode.foldSubTree();
@@ -1779,6 +1785,15 @@ function ReactTableHandleUnselectAll(){
     this.props.onUnselectAllCallback(this.clearAllRowSelections());
 }
 
+function ReactTableHandleShowSelected() {
+
+    var newState = this.state;
+    if (this.state.sortBy.length > 0 && _.keys(this.state.selectedDetailRows).length > 0)
+        newState.rootNode.sortSelectedUnSelectedNodes(this.state.selectedDetailRows,
+            convertSortByToFuncs(this.state.columnDefs, this.state.sortBy));
+    this.setState(newState);
+}
+
 function ReactTableHandleColumnFilter(columnDefToFilterBy, e, dontSet) {
     if (typeof dontSet !== "boolean")
         dontSet = undefined;
@@ -2292,6 +2307,29 @@ TreeNode.prototype.sortNodes = function (sortFuncs) {
     else
         this.ultimateChildren.sort(buildCompositeSorter(sortFuncs, false));
 };
+
+TreeNode.prototype.sortSelectedUnSelectedNodes = function (selectedRows, sortFuncs) {
+    if (this.hasChild()) {
+        this.children.sort(buildCompositeSorter(sortFuncs, true));
+        $.each(this.children, function (idx, child) {
+            child.sortNodes(sortFuncs);
+        });
+    }
+    else{
+        // segregate selected and unselected children from ultimateChildren
+        var selectedChildren = _.filter(this.ultimateChildren, function (datum) {
+            return selectedRows.hasOwnProperty(datum.cusip);
+        });
+        selectedChildren.sort(buildCompositeSorter(sortFuncs, false));
+        var unselectedChildren = _.difference(this.ultimateChildren, selectedChildren);
+        unselectedChildren.sort(buildCompositeSorter(sortFuncs, false));
+        this.ultimateChildren = selectedChildren.concat(unselectedChildren);
+    }
+
+
+};
+
+
 
 TreeNode.prototype.filterByColumn = function (columnDef, textToFilterBy, caseSensitive, customFilterer) {
     if (columnDef.format === "number")

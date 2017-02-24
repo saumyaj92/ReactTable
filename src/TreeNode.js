@@ -116,6 +116,29 @@ TreeNode.prototype.sortNodes = function (sortFuncs) {
         this.ultimateChildren.sort(buildCompositeSorter(sortFuncs, false));
 };
 
+TreeNode.prototype.sortSelectedUnSelectedNodes = function (selectedRows, sortFuncs) {
+    if (this.hasChild()) {
+        this.children.sort(buildCompositeSorter(sortFuncs, true));
+        $.each(this.children, function (idx, child) {
+            child.sortNodes(sortFuncs);
+        });
+    }
+    else{
+        // segregate selected and unselected children from ultimateChildren
+        var selectedChildren = _.filter(this.ultimateChildren, function (datum) {
+            return selectedRows.hasOwnProperty(datum.cusip);
+        });
+        selectedChildren.sort(buildCompositeSorter(sortFuncs, false));
+        var unselectedChildren = _.difference(this.ultimateChildren, selectedChildren);
+        unselectedChildren.sort(buildCompositeSorter(sortFuncs, false));
+        this.ultimateChildren = selectedChildren.concat(unselectedChildren);
+    }
+
+
+};
+
+
+
 TreeNode.prototype.filterByColumn = function (columnDef, textToFilterBy, caseSensitive, customFilterer) {
     if (columnDef.format === "number")
         this.filterByNumericColumn(columnDef, textToFilterBy);
