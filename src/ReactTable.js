@@ -407,7 +407,7 @@ var Row = React.createClass({
             // convert and format dates
             if (columnDef && columnDef.format && columnDef.format.toLowerCase() === "date") {
                 if (typeof displayContent === "number") // if displayContent is a number, we assume displayContent is in milliseconds
-                    displayContent = new Date(displayContent).toLocaleDateString();
+                    displayContent = new Date(displayContent).toLocaleString('en',{timeZone : 'UTC',year: 'numeric', day:'numeric',month:'numeric'});
             }
             // determine cell content, based on whether a cell templating callback was provided
             if (columnDef.cellTemplate)

@@ -663,7 +663,7 @@ function _mostDataPoints(options) {
         $.each(value, function(j, value2) {
             if(table.state.columnDefs[j] && table.state.columnDefs[j].format && table.state.columnDefs[j].format.toLowerCase() === "date" ){
                 if (typeof value2 === "number") // if displayContent is a number, we assume displayContent is in milliseconds
-                    value2 = new Date(value2).toLocaleDateString();
+                    value2 = new Date(value2).toLocaleString('en',{timeZone : 'UTC',year: 'numeric', day:'numeric',month:'numeric'});
 
             }
             excel += "<td>"+parseString(value2)+"</td>";
@@ -819,7 +819,7 @@ function exportToPDF(data, filename, table){
             }, startColPosition);
             if( table.state.columnDefs[index].format && table.state.columnDefs[index].format.toLowerCase() === "date" ){
                 if (typeof value2 === "number") // if displayContent is a number, we assume displayContent is in milliseconds
-                    value2 = new Date(value2).toLocaleDateString();
+                    value2 = new Date(value2).toLocaleString('en',{timeZone : 'UTC',year: 'numeric', day:'numeric',month:'numeric'});
 
             }
             doc.text(colPosition,rowPosition, parseString(value2, true));
@@ -1431,7 +1431,7 @@ var Row = React.createClass({displayName: "Row",
             // convert and format dates
             if (columnDef && columnDef.format && columnDef.format.toLowerCase() === "date") {
                 if (typeof displayContent === "number") // if displayContent is a number, we assume displayContent is in milliseconds
-                    displayContent = new Date(displayContent).toLocaleDateString();
+                    displayContent = new Date(displayContent).toLocaleString('en',{timeZone : 'UTC',year: 'numeric', day:'numeric',month:'numeric'});
             }
             // determine cell content, based on whether a cell templating callback was provided
             if (columnDef.cellTemplate)
