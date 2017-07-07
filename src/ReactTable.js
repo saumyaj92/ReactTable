@@ -490,8 +490,9 @@ var SubtotalControl = React.createClass({
         this.setState({userInputBuckets: event.target.value});
     },
     handleKeyPress: function (event) {
-        if (event.charCode == 13) {
+        if (event.keyCode == 13) {
             event.preventDefault();
+            event.stopPropagation();
             this.props.table.handleSubtotalBy(this.props.columnDef, this.state.userInputBuckets);
         }
     },
@@ -506,7 +507,7 @@ var SubtotalControl = React.createClass({
             (
                 <div className="menu-item-input" style={{"position": "absolute", "top": "-50%", "right": "100%"}}>
                     <label style={{"display": "block"}}>Enter Bucket(s)</label>
-                    <input tabIndex="1" onKeyPress={this.handleKeyPress} onChange={this.handleChange}
+                    <input tabIndex="1" onKeyDown={this.handleKeyPress} onChange={this.handleChange}
                            placeholder="ex: 1,10,15"/>
                     <a tabIndex="2" style={{"display": "block"}}
                        onClick={table.handleSubtotalBy.bind(null, columnDef, this.state.userInputBuckets)}

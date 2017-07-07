@@ -1514,8 +1514,9 @@ var SubtotalControl = React.createClass({displayName: "SubtotalControl",
         this.setState({userInputBuckets: event.target.value});
     },
     handleKeyPress: function (event) {
-        if (event.charCode == 13) {
+        if (event.keyCode == 13) {
             event.preventDefault();
+            event.stopPropagation();
             this.props.table.handleSubtotalBy(this.props.columnDef, this.state.userInputBuckets);
         }
     },
@@ -1530,7 +1531,7 @@ var SubtotalControl = React.createClass({displayName: "SubtotalControl",
             (
                 React.createElement("div", {className: "menu-item-input", style: {"position": "absolute", "top": "-50%", "right": "100%"}}, 
                     React.createElement("label", {style: {"display": "block"}}, "Enter Bucket(s)"), 
-                    React.createElement("input", {tabIndex: "1", onKeyPress: this.handleKeyPress, onChange: this.handleChange, 
+                    React.createElement("input", {tabIndex: "1", onKeyDown: this.handleKeyPress, onChange: this.handleChange, 
                            placeholder: "ex: 1,10,15"}), 
                     React.createElement("a", {tabIndex: "2", style: {"display": "block"}, 
                        onClick: table.handleSubtotalBy.bind(null, columnDef, this.state.userInputBuckets), 
@@ -1912,6 +1913,7 @@ function ReactTableHandleClearSubtotal(event) {
 }
 
 function ReactTableHandleSubtotalBy(columnDef, partitions, event) {
+    if(event)
     event.stopPropagation();
     const subtotalBy = this.state.subtotalBy || [];
     /**

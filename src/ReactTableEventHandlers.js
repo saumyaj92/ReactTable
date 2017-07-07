@@ -183,6 +183,7 @@ function ReactTableHandleClearSubtotal(event) {
 }
 
 function ReactTableHandleSubtotalBy(columnDef, partitions, event) {
+    if(event)
     event.stopPropagation();
     const subtotalBy = this.state.subtotalBy || [];
     /**
