@@ -17,6 +17,9 @@
     tr.summary-selected {
       background-color: $even-darker-utility-color;
     }
+    tr.highlight-selected {
+      background-color: $highlight-color;
+    }
     tr:hover {
       background-color: $utility-color;
     }

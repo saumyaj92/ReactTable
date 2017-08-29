@@ -295,7 +295,12 @@ function buildFirstCellForRow() {
         result = <td style={firstCellStyle} key={firstColTag}
                      onDoubleClick={this.props.filtering && this.props.filtering.doubleClickCell ?
                 this.props.handleColumnFilter(null, columnDef) : null}>
-            {data[firstColTag]}</td>;
+            {this.props.enableEditColumn && (data[firstColTag]==='' || data[firstColTag]===null || data[firstColTag]===undefined)?
+                <input type="text" id={columnDef.colTag} defaultValue={data[firstColTag]}
+                                                                               onBlur={this.saveDataField.bind(this, columnDef,this.props.data, this.props.onCellChangeCallback)}
+                                                                               onKeyPress={this.checkInput.bind(this,columnDef)}/>
+                : data[firstColTag]}
+           </td>;
     else {
         result =
             (

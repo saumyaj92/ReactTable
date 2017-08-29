@@ -10,6 +10,8 @@
 
 .rt-table-container .rt-table tr:hover { background-color: #f0f3f5; }
 
+.rt-table-container .rt-table tr.highlight-selected { background-color: #bedff6; }
+
 .rt-table-container .rt-table td { border-bottom: 1px solid #f0f3f5; padding: 2px 5px; min-width: 5px; border-right: 1px solid #f9f2f4; white-space: nowrap; }
 
 .rt-table-container .rt-scrollable { overflow-x: auto; }

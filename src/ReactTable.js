@@ -24,7 +24,10 @@ var ReactTable = React.createClass({
         subtotalBy: React.PropTypes.arrayOf(React.PropTypes.object),
         sortBy: React.PropTypes.arrayOf(React.PropTypes.object),
         selectedRows: React.PropTypes.arrayOf(React.PropTypes.string),
+        newIssuesRows: React.PropTypes.arrayOf(React.PropTypes.object),
         rowKey: React.PropTypes.string,
+        barclayTypeahead: React.PropTypes.array,
+        snpTypeahead: React.PropTypes.array,
         /**
          * callbacks that the table accept
          */
@@ -34,6 +37,7 @@ var ReactTable = React.createClass({
         onUnselectAllCallback: React.PropTypes.func,
         onSummarySelectCallback: React.PropTypes.func,
         onRightClick: React.PropTypes.func,
+        onCellChangeCallback: React.PropTypes.func,
         /**
          * props to selectively disable table features
          */
@@ -42,6 +46,7 @@ var ReactTable = React.createClass({
         disableInfiniteScrolling: React.PropTypes.bool,
         disableExporting: React.PropTypes.bool,
         disableGrandTotal: React.PropTypes.bool,
+        enableEditColumn: React.PropTypes.bool,
         /**
          * misc props
          */
@@ -412,6 +417,7 @@ var Row = React.createClass({
             // determine cell content, based on whether a cell templating callback was provided
             if (columnDef.cellTemplate)
                 displayContent = columnDef.cellTemplate.call(this, this.props.data, columnDef, displayContent);
+            if(this.props.data.isDetail)
             cells.push(
                 <td
                     className={classes}
@@ -421,17 +427,102 @@ var Row = React.createClass({
                     key={columnDef.colTag}
                     onDoubleClick={this.props.filtering && this.props.filtering.doubleClickCell ?
                                    this.props.handleColumnFilter(null, columnDef) : null}>
-                    {displayContent}
+                    {this.props.enableEditColumn && (displayContent==='' || displayContent===null || displayContent===undefined) ? (columnDef.colTag === 'barclay_sector4' ?
+                        this.getBarclayDropdown(this.props.barclayTypeahead)
+                        : (columnDef.colTag === 'rating_snp' ? this.getSnpDropdown(this.props.snpTypeahead)
+                        :<input type="text" id={columnDef.colTag} defaultValue={displayContent}
+                            style={displayInstructions.styles}
+                            onBlur={this.saveDataField.bind(this, columnDef,this.props.data, this.props.onCellChangeCallback)}
+                            onKeyPress={this.checkInput.bind(this,columnDef)}/>))
+                        : displayContent}
                 </td>
             );
+            else{
+                cells.push(
+                    <td
+                        className={classes}
+                        onClick={columnDef.onCellSelect ? columnDef.onCellSelect.bind(null, this.props.data[columnDef.colTag], columnDef, i) : null}
+                        onContextMenu={this.props.onRightClick ? this.props.onRightClick.bind(null, this.props.data, columnDef) : null}
+                        style={displayInstructions.styles}
+                        key={columnDef.colTag}
+                        onDoubleClick={this.props.filtering && this.props.filtering.doubleClickCell ?
+                            this.props.handleColumnFilter(null, columnDef) : null}>
+                        {displayContent}
+                    </td>
+                );
+            }
         }
         classes = cx({
             'selected': this.props.isSelected && this.props.data.isDetail,
-            'summary-selected': this.props.isSelected && !this.props.data.isDetail
+            'summary-selected': this.props.isSelected && !this.props.data.isDetail,
+            'highlight-selected': (_.indexOf(this.props.newIssuesRows,this.props.data)!== -1 || _.indexOf(_.pluck(this.props.newIssuesRows, 'cusip'),this.props.data.cusip)!== -1) && this.props.data.isDetail
         });
         // apply extra CSS if specified
         return (<tr onClick={this.props.onSelect.bind(null, this.props.data)}
                     className={classes} style={this.props.extraStyle}>{cells}</tr>);
+    },
+
+    onDropdownSelect: function(event){
+        this.saveDataField(_.filter(this.props.columnDefs, function(column){return column.colTag === 'barclay_sector4'})[0], this.props.data, this.props.onCellChangeCallback, event);
+    },
+
+    onSnpDropdownSelect: function(event){
+        this.saveDataField(_.filter(this.props.columnDefs, function(column){return column.colTag === 'rating_snp'})[0], this.props.data, this.props.onCellChangeCallback, event);
+    },
+
+    getBarclayDropdown: function(barclayTypeahead){
+        var options = [];
+        options.push(<option value={''} key={0}/>);
+        for(var i = 1; i < barclayTypeahead.length; i++){
+            options.push(<option value={barclayTypeahead[i]} key={i}>{barclayTypeahead[i]}</option>);
+        }
+        return <select onChange={this.onDropdownSelect}>{options}</select>;
+    },
+
+    getSnpDropdown: function(snpTypeahead){
+        var options = [];
+        options.push(<option value={''} key={0}/>);
+        for(var i = 1; i < snpTypeahead.length; i++){
+            options.push(<option value={snpTypeahead[i]} key={i}>{snpTypeahead[i]}</option>);
+        }
+        return <select onChange={this.onSnpDropdownSelect}>{options}</select>;
+    },
+
+    saveDataField: function(columnDef, row, cellChangeCallback, event){
+        var newCellData = event.target.value;
+        if(columnDef.format === 'DATE'){
+            if(!/^\d{2}\/\d{2}\/\d{4}$/.test(newCellData)){
+                this.getDOMNode().querySelectorAll("#"+columnDef.colTag)[0].style["backgroundColor"] = '#ffb7b7';
+                //Callback to save the changed input in original data.
+                cellChangeCallback(columnDef,row, "");
+            }
+            else {
+                this.getDOMNode().querySelectorAll("#"+columnDef.colTag)[0].style["backgroundColor"] = 'white';
+                cellChangeCallback(columnDef,row, newCellData);
+            }
+        }
+        else{
+            //Callback to save the changed input in original data.
+            cellChangeCallback(columnDef,row, newCellData);
+        }
+    },
+    checkInput: function (columnDef, event) {
+        if(columnDef.format){
+            switch(columnDef.format){
+                case "number":
+                case "NUMERICAL":
+                    return event.charCode >= 46 && event.charCode <= 57; //also want to include period sign
+                case "CATEGORICAL":
+                    return (event.charCode > 64 && event.charCode < 91) || (event.charCode > 96 && event.charCode < 123);
+                case "DATE":
+                    return event.charCode >= 47 && event.charCode <= 57;
+                default:
+                    return event.charCode;
+            }
+        }
+        else{
+            return event.charCode;
+        }
     }
 });
 
@@ -563,6 +654,11 @@ function rowMapper(row) {
         toggleHide={this.handleToggleHide}
         columnDefs={this.state.columnDefs}
         filtering={this.props.filtering}
+        onCellChangeCallback={this.props.onCellChangeCallback}
+        enableEditColumn={this.props.enableEditColumn}
+        barclayTypeahead={this.props.barclayTypeahead}
+        snpTypeahead={this.props.snpTypeahead}
+        newIssuesRows={this.props.newIssuesRows}
         handleColumnFilter={this.handleColumnFilter.bind}
         />);
 }

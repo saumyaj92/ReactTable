@@ -5,6 +5,7 @@ $(function () {
         {
             colTag: "last_name",
             text: "Last Name",
+            format: 'CATEGORICAL',
             /**
              * custom aggregation method - efficient count distinct by pre-sorting
              * using underscore
@@ -65,6 +66,7 @@ $(function () {
 
         }
     ];
+
     $("#stop-loading").on('click', function () {
         columnDefs[4].isLoading = false;
         table.setState({});
@@ -78,12 +80,14 @@ $(function () {
             //},
             disablePagination: false,
             disableInfiniteScrolling: true,
+            enableEditColumn: true,
             sortBy: [{colTag: "test_score", sortType: "asc"}],
             subtotalBy: [{
                 colTag: "nationality", text: "Nationality"
             }],
             rowKey: 'id',
             data: testData,
+            newIssuesRows: [testData[0],testData[1]],
             pageSize: 40,
             onRightClick: function (row, event) {
                 console.log(row);
@@ -96,6 +100,14 @@ $(function () {
                 Description: {
                     infoBox: "formatInstructions"
                 }
+            },
+            onCellChangeCallback: function(columnDef, row, input){
+                var newRow = row;
+                newRow[columnDef.colTag] = input;
+                console.log(columnDef);
+                console.log(newRow);
+                console.log(input);
+
             },
             beforeColumnAdd: function () {
                 console.log("beforeColumnAdd callback called!");
