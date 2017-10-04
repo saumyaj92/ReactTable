@@ -1055,8 +1055,7 @@ var ReactTable = React.createClass({displayName: "ReactTable",
         selectedRows: React.PropTypes.arrayOf(React.PropTypes.string),
         newIssuesRows: React.PropTypes.arrayOf(React.PropTypes.object),
         rowKey: React.PropTypes.string,
-        barclayTypeahead: React.PropTypes.array,
-        snpTypeahead: React.PropTypes.array,
+        dropdownTypeahead: React.PropTypes.object,
         /**
          * callbacks that the table accept
          */
@@ -1456,13 +1455,12 @@ var Row = React.createClass({displayName: "Row",
                     key: columnDef.colTag, 
                     onDoubleClick: this.props.filtering && this.props.filtering.doubleClickCell ?
                                    this.props.handleColumnFilter(null, columnDef) : null}, 
-                    this.props.enableEditColumn && (displayContent==='' || displayContent===null || displayContent===undefined) ? (columnDef.colTag === 'barclay_sector4' ?
-                        this.getBarclayDropdown(this.props.barclayTypeahead)
-                        : (columnDef.colTag === 'rating_snp' ? this.getSnpDropdown(this.props.snpTypeahead)
+                    this.props.enableEditColumn && (displayContent==='' || displayContent===null || displayContent===undefined) ?
+                        (_.indexOf(_.keys(this.props.dropdownTypeahead),columnDef.colTag) >= 0 ? this.getDropdown(this.props.dropdownTypeahead, columnDef.colTag)
                         :React.createElement("input", {type: "text", id: columnDef.colTag, defaultValue: displayContent, 
                             style: displayInstructions.styles, 
                             onBlur: this.saveDataField.bind(this, columnDef,this.props.data, this.props.onCellChangeCallback), 
-                            onKeyPress: this.checkInput.bind(this,columnDef)})))
+                            onKeyPress: this.checkInput.bind(this,columnDef)}))
                         : displayContent
                 )
             );
@@ -1491,34 +1489,22 @@ var Row = React.createClass({displayName: "Row",
                     className: classes, style: this.props.extraStyle}, cells));
     },
 
-    onDropdownSelect: function(event){
-        this.saveDataField(_.filter(this.props.columnDefs, function(column){return column.colTag === 'barclay_sector4'})[0], this.props.data, this.props.onCellChangeCallback, event);
+    onColTagDropdownSelect: function(colTag, event){
+        this.saveDataField(_.filter(this.props.columnDefs, function(column){return column.colTag === colTag})[0], this.props.data, this.props.onCellChangeCallback, event);
     },
 
-    onSnpDropdownSelect: function(event){
-        this.saveDataField(_.filter(this.props.columnDefs, function(column){return column.colTag === 'rating_snp'})[0], this.props.data, this.props.onCellChangeCallback, event);
-    },
-
-    getBarclayDropdown: function(barclayTypeahead){
+    getDropdown: function(dropdownTypeahead, colTag){
         var options = [];
         options.push(React.createElement("option", {value: '', key: 0}));
-        for(var i = 1; i < barclayTypeahead.length; i++){
-            options.push(React.createElement("option", {value: barclayTypeahead[i], key: i}, barclayTypeahead[i]));
+        for(var i = 1; i < dropdownTypeahead[colTag].length; i++){
+            options.push(React.createElement("option", {value: dropdownTypeahead[colTag][i], key: i}, dropdownTypeahead[colTag][i]));
         }
-        return React.createElement("select", {onChange: this.onDropdownSelect}, options);
-    },
-
-    getSnpDropdown: function(snpTypeahead){
-        var options = [];
-        options.push(React.createElement("option", {value: '', key: 0}));
-        for(var i = 1; i < snpTypeahead.length; i++){
-            options.push(React.createElement("option", {value: snpTypeahead[i], key: i}, snpTypeahead[i]));
-        }
-        return React.createElement("select", {onChange: this.onSnpDropdownSelect}, options);
+        return React.createElement("select", {onChange: this.onColTagDropdownSelect.bind(this,colTag)}, options);
     },
 
     saveDataField: function(columnDef, row, cellChangeCallback, event){
         var newCellData = event.target.value;
+        var thisWrapper = this;
         if(columnDef.format === 'DATE'){
             if(!/^\d{2}\/\d{2}\/\d{4}$/.test(newCellData)){
                 this.getDOMNode().querySelectorAll("#"+columnDef.colTag)[0].style["backgroundColor"] = '#ffb7b7';
@@ -1532,7 +1518,13 @@ var Row = React.createClass({displayName: "Row",
         }
         else{
             //Callback to save the changed input in original data.
-            cellChangeCallback(columnDef,row, newCellData);
+            var returnedCallbackValue = cellChangeCallback(columnDef, row, newCellData);
+            if(isPromise(returnedCallbackValue)){
+                returnedCallbackValue.then(function (result) {
+                    thisWrapper.forceUpdate();
+                    adjustHeaders.call(thisWrapper.props.tableState);
+                })
+            }
         }
     },
     checkInput: function (columnDef, event) {
@@ -1674,6 +1666,7 @@ function rowMapper(row) {
     var rowKey = this.props.rowKey;
     var generatedKey = generateRowKey(row, rowKey);
     return (React.createElement(Row, {
+        tableState: this, 
         key: generatedKey, 
         data: row, 
         extraStyle: resolveExtraStyles(generatedKey, this.props.extraStyle), 
@@ -1685,8 +1678,7 @@ function rowMapper(row) {
         filtering: this.props.filtering, 
         onCellChangeCallback: this.props.onCellChangeCallback, 
         enableEditColumn: this.props.enableEditColumn, 
-        barclayTypeahead: this.props.barclayTypeahead, 
-        snpTypeahead: this.props.snpTypeahead, 
+        dropdownTypeahead: this.props.dropdownTypeahead, 
         newIssuesRows: this.props.newIssuesRows, 
         handleColumnFilter: this.handleColumnFilter.bind}
         ));
