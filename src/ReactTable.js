@@ -430,6 +430,7 @@ var Row = React.createClass({
                         (_.indexOf(_.keys(this.props.dropdownTypeahead),columnDef.colTag) >= 0 ? this.getDropdown(this.props.dropdownTypeahead, columnDef.colTag)
                         :<input type="text" id={columnDef.colTag} defaultValue={displayContent}
                             style={displayInstructions.styles}
+                                placeholder={columnDef.format === 'DATE' ? 'MM/DD/YYYY' : null}
                             onBlur={this.saveDataField.bind(this, columnDef,this.props.data, this.props.onCellChangeCallback)}
                             onKeyPress={this.checkInput.bind(this,columnDef)}/>)
                         : displayContent}
@@ -477,8 +478,9 @@ var Row = React.createClass({
         var newCellData = event.target.value;
         var thisWrapper = this;
         if(columnDef.format === 'DATE'){
-            if(!/^\d{2}\/\d{2}\/\d{4}$/.test(newCellData)){
+            if(newCellData!== '' && !/^([0]*[1-9])|([1][0-2])\/([0]*[1-3]|[1,2][0-9])\/\d{4}$/.test(newCellData)){
                 this.getDOMNode().querySelectorAll("#"+columnDef.colTag)[0].style["backgroundColor"] = '#ffb7b7';
+                event.target.value = '';
                 //Callback to save the changed input in original data.
                 cellChangeCallback(columnDef,row, "");
             }
