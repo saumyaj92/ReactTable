@@ -27,13 +27,10 @@ const lexicalSorter = {
 
 const dateSorter = {
     asc: function (a, b) {
-        var aDate = !a[this.colTag] ? 0 : a[this.colTag];
-        var bDate = !b[this.colTag] ? 0 : b[this.colTag];
-
-        return new Date(aDate) - new Date(bDate);
+        return new Date(a[this.colTag]) - new Date(b[this.colTag]);
     },
     desc: function (a, b) {
-        return -1 * dateSorter.asc.call(this, a, b);
+        return new Date(b[this.colTag]) - new Date(a[this.colTag]); //-1 * dateSorter.asc.call(null, a, b);
     }
 };
 
@@ -45,26 +42,15 @@ const dateSorter = {
  * @param sortType 'asc' or 'desc'
  * @returns {function}
  */
-function getSortFunction(columnDef, sortType, subtotalColumnDef) {
+function getSortFunction(columnDef, sortType) {
     const format = columnDef.format || "";
-    var sorter = null;
-    if (subtotalColumnDef) {
-        sorter = lexicalSorter[sortType].bind(subtotalColumnDef);
-        // if the user provided a custom sort function for the column, use that instead
-        if (columnDef.sort && columnDef[sortType])
-            sorter = columnDef.sort[sortType].bind(subtotalColumnDef);
-        else if (format === "date")
-            sorter = dateSorter[sortType].bind(subtotalColumnDef);
-        return sorter;
-    } else {
-        sorter = lexicalSorter[sortType].bind(columnDef);
-        // if the user provided a custom sort function for the column, use that instead
-        if (columnDef.sort && columnDef[sortType])
-            sorter = columnDef.sort[sortType].bind(columnDef);
-        else if (format === "date")
-            sorter = dateSorter[sortType].bind(columnDef);
-        return sorter;
-    }
+    var sorter = lexicalSorter[sortType].bind(columnDef);
+    // if the user provided a custom sort function for the column, use that instead
+    if (columnDef.sort && columnDef[sortType])
+        sorter = columnDef.sort[sortType].bind(columnDef);
+    else if (format === "date" || format === "DATE")
+        sorter = dateSorter[sortType].bind(columnDef);
+    return sorter;
 }
 
 /**

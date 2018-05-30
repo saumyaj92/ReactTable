@@ -99,7 +99,7 @@ function getColumnAlignment(columnDef) {
  * @returns {*}
  */
 function formatNumber(value, columnDef, formatConfig) {
-    if (!isNaN(value) && (columnDef.format == "number" || columnDef.format == "currency")) {
+    if (!isNaN(value) && (columnDef.format == "number" || columnDef.format == "currency") && value!== "") {
         // multiplier
         value *= formatConfig.multiplier;
         // rounding
@@ -139,53 +139,6 @@ function buildCustomMenuItems(table, columnDef) {
         return columnDef.customMenuItems;
 }
 
-function clickFilterMenu(table, columnDef) {
-    if (!(table.props.filtering && table.props.filtering.disable)) {
-        toggleFilterBox.call(table, table, columnDef);
-        table.setState({});
-    }
-}
-
-function clickFilterSearch(table, columnDef) {
-    if (!(table.props.filtering && table.props.filtering.disable)) {
-        toggleSearchBox.call(table, table, columnDef);
-        table.setState({});
-    }
-}
-
-function toggleSearchBox(table, columnDef) {
-    var sip = table.state.searchInPlace;
-    //open current filter drop down, close others
-    sip[columnDef.colTag] = !sip[columnDef.colTag];
-    for (var key in sip) {
-        if (key !== columnDef.colTag) {
-            sip[key] = false;
-        }
-    }
-
-    table.setState({
-        searchInPlace: sip
-    });
-
-    setTimeout(function (sip) {
-        if (!sip[columnDef.colTag]) {
-            return;
-        }
-        //move filter panel to right position
-        var $header = $(this.refs["header-" + columnDef.colTag].getDOMNode());
-        var headerPosition = $header.position();
-
-        var $filterDropDown = $(this.refs['search-filter-' + columnDef.colTag].getDOMNode());
-
-        if (headerPosition.left !== 0) {
-            $filterDropDown.css("left", headerPosition.left + "px");
-        }
-        if (headerPosition.right !== 0) {
-            $filterDropDown.css("right", headerPosition.right + "px");
-        }
-    }.bind(this, sip));
-}
-
 function buildMenu(options) {
     var table = options.table,
         columnDef = options.columnDef,
@@ -194,6 +147,7 @@ function buildMenu(options) {
 
     const subMenuStyles = {
         "top": "-20%",
+        "left": "100%",
         "padding": "5px"
     };
 
@@ -206,102 +160,54 @@ function buildMenu(options) {
     var menuItems = [];
     var availableDefaultMenuItems = {
         sort: [
-            React.createElement(SubMenu, {onMenuClick: table.handleSetSort.bind(null, columnDef, null), table: table, 
-                menuItem: React.createElement("span", null, 
-                    React.createElement("i", {className: "fa fa-sort"}), 
-                "Sort"), subMenu: 
+            React.createElement(SubMenu, {onMenuClick: table.handleSetSort.bind(null,columnDef,null), 
+                     menuItem: React.createElement("span", null, React.createElement("i", {className: "fa fa-sort"}), " Sort"), subMenu: 
                 React.createElement("div", {className: "rt-header-menu", style: subMenuStyles}, 
                     React.createElement("div", {className: "menu-item", onClick: table.handleSetSort.bind(null, columnDef, 'asc')}, 
-                        React.createElement("i", {className: "fa fa-sort-alpha-asc"}), 
-                    "Asc"
+                        React.createElement("i", {className: "fa fa-sort-alpha-asc"}), " Asc"
                     ), 
                     React.createElement("div", {className: "menu-item", onClick: table.handleSetSort.bind(null, columnDef, 'desc')}, 
-                        React.createElement("i", {className: "fa fa-sort-alpha-desc"}), 
-                    "Desc"
+                        React.createElement("i", {className: "fa fa-sort-alpha-desc"}), " Desc"
                     ), 
                     React.createElement("div", {className: "separator"}), 
                     React.createElement("div", {className: "menu-item", onClick: table.handleAddSort.bind(null, columnDef, 'asc')}, 
-                        React.createElement("i", {className: "fa fa-plus"}), 
-                        React.createElement("i", {className: "fa fa-sort-alpha-asc"}), 
-                    "Add Asc"
+                        React.createElement("i", {className: "fa fa-plus"}), React.createElement("i", {className: "fa fa-sort-alpha-asc"}), " Add Asc"
                     ), 
                     React.createElement("div", {className: "menu-item", onClick: table.handleAddSort.bind(null, columnDef, 'desc')}, 
-                        React.createElement("i", {className: "fa fa-plus"}), 
-                        React.createElement("i", {className: "fa fa-sort-alpha-desc"}), 
-                    "Add Desc"
+                        React.createElement("i", {className: "fa fa-plus"}), React.createElement("i", {className: "fa fa-sort-alpha-desc"}), " Add Desc"
                     ), 
                     React.createElement("div", {className: "separator"}), 
-                    React.createElement("div", {className: "menu-item", onClick: table.clearSort}, 
-                        React.createElement("i", {className: "fa fa-ban"}), 
-                    "Clear All Sort")
+                    React.createElement("div", {className: "menu-item", onClick: table.clearSort}, React.createElement("i", {className: "fa fa-ban"}), " Clear All Sort")
                 )}
             )
         ],
         filter: [
-            React.createElement(SubMenu, {table: table, 
-                menuItem: React.createElement("span", null, 
-                    React.createElement("i", {className: "fa fa-filter"}), 
-                "Filter"), 
-                subMenu: 
-                    React.createElement("div", {className: "rt-header-menu", style: subMenuStyles}, 
-                        React.createElement("div", {className: "menu-item", onClick: clickFilterMenu.bind(null, table, columnDef)}, 
-                            React.createElement("i", {className: "fa fa-filter"}), " Filter"), 
-                        columnDef.format == 'number' ?'': React.createElement("div", {className: "menu-item", onClick: clickFilterSearch.bind(null, table, columnDef)}, 
-                            React.createElement("i", {className: "fa fa-search"}), " Search"), 
-                        React.createElement("div", {className: "separator"}), 
-                        React.createElement("div", {className: "menu-item", onClick: table.handleClearFilter.bind(null, columnDef)}, "Clear Filter"), 
-                        React.createElement("div", {className: "menu-item", onClick: table.handleClearAllFilters}, "Clear All Filters")
-                    )
-                    }
-            )
+            React.createElement("div", {className: "menu-item", onClick: table.handleClearFilter.bind(null, columnDef)}, "Clear Filter"),
+            React.createElement("div", {className: "menu-item", onClick: table.handleClearAllFilters}, "Clear All Filters"),
+            React.createElement("div", {className: "separator"})
         ],
         summarize: [
-            React.createElement(SubMenu, {table: table, 
+            React.createElement(SubMenu, {
                 onMenuClick: columnDef.format == 'number' || columnDef == 'currency' ? null : table.handleSubtotalBy.bind(null, columnDef, null), 
-                menuItem: React.createElement("span", null, 
-                    React.createElement("i", {className: "fa fa-list-ul"}), 
-                "Subtotal"), 
-                subMenu: columnDef.format == DATE_FORMAT && columnDef.formatInstructions != null ?
-                    React.createElement("div", {className: "rt-header-menu", style: subMenuStyles}, 
-                        React.createElement(SubtotalControl, {table: table, columnDef: columnDef}), 
-                        React.createElement(SubtotalControlForDates, {freq: DAILY, table: table, columnDef: columnDef}), 
-                        React.createElement(SubtotalControlForDates, {freq: WEEKLY, table: table, columnDef: columnDef}), 
-                        React.createElement(SubtotalControlForDates, {freq: MONTHLY, table: table, columnDef: columnDef}), 
-                        React.createElement(SubtotalControlForDates, {freq: QUARTERLY, table: table, columnDef: columnDef}), 
-                        React.createElement(SubtotalControlForDates, {freq: YEARLY, table: table, columnDef: columnDef}), 
-                        React.createElement("div", {className: "menu-item", onClick: table.handleClearSubtotal}, 
-                            React.createElement("i", {className: "fa fa-ban"}), 
-                        "Clear All Subtotal")
-                    ) :
-                    React.createElement("div", {className: "rt-header-menu", style: subMenuStyles}, 
-                        React.createElement(SubtotalControl, {table: table, columnDef: columnDef}), 
-                        React.createElement("div", {className: "menu-item", onClick: table.handleClearSubtotal}, 
-                            React.createElement("i", {className: "fa fa-ban"}), 
-                        "Clear All Subtotal")
-                    )
-                    
-            }
-            )
-        ],
-
-        summarizeClearAll: [
-            React.createElement(SubMenu, {table: table, 
-                menuItem: React.createElement("span", null, 
-                    React.createElement("i", {className: "fa fa-list-ul"}), 
-                "Subtotal"), 
+                menuItem: React.createElement("span", null, React.createElement("i", {className: "fa fa-list-ul"}), " Subtotal"), 
                 subMenu: 
-                    React.createElement("div", {className: "rt-header-menu", style: subMenuStyles}, 
-                        React.createElement("div", {className: "menu-item", onClick: table.handleClearSubtotal}, 
-                            React.createElement("i", {className: "fa fa-ban"}), 
-                        "Clear All Subtotal")
-                    )
-                    })
+                React.createElement("div", {className: "rt-header-menu", style: subMenuStyles}, 
+                   React.createElement(SubtotalControl, {table: table, columnDef: columnDef}), 
+                    React.createElement("div", {className: "menu-item", onClick: table.handleClearSubtotal}, React.createElement("i", {className: "fa fa-ban"}), " Clear All Subtotal")
+                )
+            })
         ],
         remove: [
-            React.createElement("div", {className: "menu-item", onClick: table.handleRemove.bind(null, columnDef)}, 
-                React.createElement("i", {
-                    className: "fa fa-remove"}), 
-            "Remove Column")
+            React.createElement("div", {className: "menu-item", onClick: table.handleRemove.bind(null, columnDef)}, React.createElement("i", {
+                className: "fa fa-remove"}), " Remove Column")
+        ],
+        showselect: [
+            React.createElement("div", {className: "menu-item", onClick: table.handleShowSelected}, React.createElement("i", {
+                className: "fa fa-sort-amount-desc"}), " Show Selected Rows")
+        ],
+        unselect: [
+            React.createElement("div", {className: "menu-item", onClick: table.handleUnselect}, React.createElement("i", {
+                className: "fa fa-angle-up"}), " Unselect All Rows")
         ]
     };
     if (table.props.defaultMenuItems) {
@@ -313,17 +219,11 @@ function buildMenu(options) {
         addMenuItems(menuItems, availableDefaultMenuItems.sort);
         if (!(table.props.filtering && table.props.filtering.disable))
             addMenuItems(menuItems, availableDefaultMenuItems.filter);
-        if (!isFirstColumn || table.state.subtotalBy.length == 0) {
-            addMenuItems(menuItems, availableDefaultMenuItems.summarize);
-        } else {
-            //if first column is the subtotal column, don't add 'addSubtotal'
-            addMenuItems(menuItems, availableDefaultMenuItems.summarizeClearAll);
-        }
-        if (!isFirstColumn && !table.props.disableRemoveColumn) {
-            menuItems.push(React.createElement("div", {className: "separator"}));
+        addMenuItems(menuItems, availableDefaultMenuItems.summarize);
+        if (!isFirstColumn)
             addMenuItems(menuItems, availableDefaultMenuItems.remove);
-        }
-
+        addMenuItems(menuItems, availableDefaultMenuItems.showselect);
+        addMenuItems(menuItems, availableDefaultMenuItems.unselect);
     }
 
     var customMenuItems = buildCustomMenuItems(table, columnDef);
@@ -332,25 +232,19 @@ function buildMenu(options) {
     if (isFirstColumn) {
         menuItems.push(React.createElement("div", {className: "separator"}));
         if (!table.props.disableExporting) {
-            menuItems.push(React.createElement("div", {className: "menu-item", onClick: table.handleDownload.bind(null, "excel")}, 
-                React.createElement("i", {
-                    className: "fa fa-file-excel-o"}), 
-            "Download as XLS"));
-
-            if (!table.props.disableDownloadPDF) {
-                menuItems.push(React.createElement("div", {className: "menu-item", onClick: table.handleDownload.bind(null, "pdf")}, 
-                    React.createElement("i", {className: "fa fa-file-pdf-o"}), 
-                "Download as PDF"));
-            }
+            menuItems.push(React.createElement("div", {className: "menu-item", onClick: table.handleDownload.bind(null, "excel")}, React.createElement("i", {
+                className: "fa fa-file-excel-o"}), " Download as XLS"));
+            menuItems.push(React.createElement("div", {className: "menu-item", onClick: table.handleDownload.bind(null, "pdf")}, React.createElement("i", {
+                className: "fa fa-file-pdf-o"}), " Download as PDF"));
         }
 
         menuItems.push(React.createElement("div", {className: "menu-item", onClick: table.handleCollapseAll}, "Collapse" + ' ' +
-        "All"));
+            "All"));
         menuItems.push(React.createElement("div", {className: "menu-item", onClick: table.handleExpandAll}, "Expand All"));
     }
 
     return (
-        React.createElement("div", {style: menuStyle, className: ("rt-header-menu") + (table.state.filterInPlace[columnDef.colTag] || table.state.searchInPlace[columnDef.colTag] ? " rt-hide" : "")}, 
+        React.createElement("div", {style: menuStyle, className: "rt-header-menu"}, 
             menuItems
         )
     );
@@ -361,43 +255,15 @@ function addMenuItems(master, children) {
         master.push(children[j])
 }
 
-function toggleFilterBox(table, columnDef) {
+function toggleFilterBox(table, colTag) {
     var fip = table.state.filterInPlace;
-    //open current filter drop down, close others
-    fip[columnDef.colTag] = !fip[columnDef.colTag];
-    for (var key in fip) {
-        if (key !== columnDef.colTag) {
-            fip[key] = false;
-        }
-    }
-
+    fip[colTag] = !fip[colTag];
     table.setState({
         filterInPlace: fip
     });
-
-    setTimeout(function (fip) {
-        if (!fip[columnDef.colTag]) {
-            return;
-        }
-
-        //move filter panel to right position
-        var $header = $(this.refs["header-" + columnDef.colTag].getDOMNode());
-        var headerPosition = $header.position();
-        var $filterDropDown = null;
-
-        if (columnDef.format == 'number') {
-            $filterDropDown = $(this.refs["numericFilterPanel-" + columnDef.colTag].getDOMNode());
-        } else {
-            $filterDropDown = $(this.refs['select-filter-' + columnDef.colTag].getDOMNode())
-        }
-
-        if (headerPosition.left !== 0) {
-            $filterDropDown.css("left", headerPosition.left + "px");
-        }
-        if (headerPosition.right !== 0) {
-            $filterDropDown.css("right", headerPosition.right + "px");
-        }
-    }.bind(this, fip));
+    setTimeout(function () {
+        $("input.rt-" + colTag + "-filter-input").focus();
+    });
 }
 
 function pressedKey(table, colTag, e) {
@@ -409,227 +275,6 @@ function pressedKey(table, colTag, e) {
         });
     }
 }
-
-function pressedKeyInSearch(table, colTag, e) {
-    const ESCAPE = 27;
-    if (table.state.searchInPlace[colTag] && e.keyCode == ESCAPE) {
-        table.state.searchInPlace[colTag] = false;
-        table.setState({
-            searchInPlace: table.state.searchInPlace
-        });
-    }
-}
-
-function selectFilters(table, columnDefToFilterBy, e) {
-    table.state.selectedFilters = $(e.target).val();
-    table.setState({});
-    table.handleColumnFilter.call(null, columnDefToFilterBy);
-}
-
-function addFilter(table, columnDef, event) {
-    var filterValue = event.target.value;
-
-    var filterData = null;
-    var isAdded = false;
-    table.state.currentFilters.forEach(function (filter) {
-        if (filter.colDef === columnDef) {
-            isAdded = filter.filterText.some(function (addedFilter) {
-                return addedFilter === filterValue;
-            });
-
-            if (!isAdded) {
-                filter.filterText.push(filterValue);
-                filterData = filter.filterText;
-            }
-        }
-    });
-
-    if (isAdded) {
-        return;
-    }
-
-    if (!filterData) {
-        table.state.currentFilters.push({
-            colDef: columnDef,
-            filterText: [filterValue]
-        });
-        filterData = [filterValue];
-    }
-
-    table.setState({});
-}
-
-function search(table, columnDef) {
-    var filterData = null;
-    table.state.currentFilters.forEach(function (filter) {
-        if (filter.colDef === columnDef) {
-            filterData = filter.filterText;
-        }
-    });
-
-    columnDef.isFiltered = true;
-    columnDef.isSearchText = true;
-    table.state.searchInPlace[columnDef.colTag] = false;
-    table.handleColumnFilter.call(null, columnDef, filterData);
-    columnDef.isSearchText = false;
-
-    //hide filter dropdown
-    $(this.refs['search-filter-' + columnDef.colTag].getDOMNode()).addClass('rt-hide');
-}
-
-function filter(table, columnDef) {
-    var filterData = null;
-    table.state.currentFilters.forEach(function (filter) {
-        if (filter.colDef === columnDef) {
-            filterData = filter.filterText;
-        }
-    });
-
-    columnDef.isFiltered = true;
-    table.state.filterInPlace[columnDef.colTag] = false;
-    table.handleColumnFilter.call(null, columnDef, filterData);
-
-    //hide filter dropdown
-    $(this.refs['select-filter-' + columnDef.colTag].getDOMNode()).addClass('rt-hide');
-}
-
-function removeFilter(table, columnDef, index, event) {
-    event.preventDefault();
-
-    table.state.currentFilters.forEach(function (filter) {
-        if (filter.colDef === columnDef) {
-            filter.filterText.splice(index, 1);
-            if (filter.filterText.length == 0) {
-                table.handleClearFilter(columnDef);
-            }
-        }
-    });
-
-    table.setState({});
-}
-/**
- * set the search text for filter a column
- * @param table
- * @param columnDef
- * @param event
- */
-function changeSearchText(table, columnDef, event) {
-    var filterValue = event.target.value;
-
-    if (!filterValue) {
-        return;
-    }
-
-    var isAdded = false;
-    table.state.currentFilters.forEach(function (filter) {
-        if (filter.colDef === columnDef) {
-            isAdded = true;
-            filter.filterText = [filterValue];
-        }
-    });
-
-    if (!isAdded) {
-        table.state.currentFilters.push({
-            colDef: columnDef,
-            filterText: [filterValue]
-        });
-    }
-
-    table.setState({});
-}
-
-function buildSearchBox(table, columnDef) {
-
-    return (
-        React.createElement("div", {className: ("rt-select-filter-container ") + (table.state.searchInPlace[columnDef.colTag] ? "" : " rt-hide"), 
-            ref: 'search-filter-' + columnDef.colTag}, 
-            React.createElement("div", {style: {display: 'block', marginBottom: '2px'}}, 
-                React.createElement("input", {className: "rt-" + columnDef.colTag + "-filter-select rt-filter-select", 
-                    onKeyDown: pressedKeyInSearch.bind(null, table, columnDef.colTag), 
-                    onChange: changeSearchText.bind(null, table, columnDef)}), 
-                React.createElement("i", {style: {float: 'right', 'marginTop': '5px', 'marginRight': '4%'}, 
-                    className: "fa fa-search", onClick: search.bind(table, table, columnDef)})
-            )
-        )
-    )
-}
-
-/**
- * build filter drop down list
- * @param table
- * @param columnDef
- * @returns {XML}
- */
-function buildFilterList(table, columnDef) {
-    if (!table.state.filterData) {
-        return;
-    }
-
-    var filterData = table.state.filterData[columnDef.colTag];
-    if (!filterData || (filterData.length == 1 && filterData[0] == 'undefined')) {
-        return;
-    }
-    filterData.sort();
-    var filterList = [];
-    //if(filterData.length > 1){
-    filterList.push(
-        React.createElement("option", {value: "default", style: {display: 'none'}})
-    );
-    //}
-    for (var i = 0; i < filterData.length; i++) {
-        var label = filterData[i];
-        if (columnDef.format == DATE_FORMAT && columnDef.formatInstructions != null) {
-            label = moment(parseInt(label)).format(columnDef.formatInstructions)
-        }
-
-        filterList.push(
-            React.createElement("option", {value: filterData[i]}, label)
-        );
-    }
-
-    var selectedFilters = [];
-    table.state.currentFilters.forEach(function (filter) {
-        if (filter.colDef === columnDef) {
-            filter.filterText.forEach(function (filter, index) {
-                if (columnDef.format == DATE_FORMAT && columnDef.formatInstructions != null) {
-                    filter = moment(parseInt(filter)).format(columnDef.formatInstructions)
-                }
-
-                selectedFilters.push(
-                    React.createElement("div", {style: {display: 'block', marginTop: '2px'}}, 
-                        React.createElement("input", {className: "rt-" + columnDef.colTag + "-filter-input rt-filter-input", 
-                            type: "text", value: filter, readOnly: true}), 
-                        React.createElement("i", {style: {float: 'right', 'marginTop': '5px', 'marginRight': '4%'}, className: "fa fa-minus", 
-                            onClick: removeFilter.bind(null, table, columnDef, index)}
-                        )
-                    )
-                )
-            });
-        }
-    });
-    return (
-        React.createElement("div", {className: ("rt-select-filter-container ") + (table.state.filterInPlace[columnDef.colTag] ? "" : " rt-hide"), 
-            ref: 'select-filter-' + columnDef.colTag}, 
-            React.createElement("div", {style: {display: 'block', marginBottom: '2px'}}, 
-                React.createElement("select", {
-                    className: "rt-" + columnDef.colTag + "-filter-select rt-filter-select", 
-                    onChange: addFilter.bind(null, table, columnDef), 
-                    onKeyDown: pressedKey.bind(null, table, columnDef.colTag), 
-                    value: filterData.length > 1 ? "default" : filterData[0]}, 
-                    filterList
-                ), 
-                React.createElement("i", {style: {float: 'right', 'marginTop': '5px', 'marginRight': '4%'}, 
-                    className: "fa fa-filter", onClick: filter.bind(table, table, columnDef)})
-            ), 
-            React.createElement("div", {className: ("separator") + ( selectedFilters.length == 0 ? " rt-hide" : "")}), 
-            React.createElement("div", {style: {display: 'block'}}, 
-                selectedFilters
-            )
-        )
-    )
-}
-
-
 /**
  * creates the header row of the table
  * TODO too long needs refactoring big time I am not kidding
@@ -637,75 +282,85 @@ function buildFilterList(table, columnDef) {
  * @returns {XML}
  */
 function buildHeaders(table) {
+    var columnDef = table.state.columnDefs[0], i, style = {};
+    /**
+     * sortDef tracks whether the current column is being sorted
+     */
+    var sortDef = findDefByColTag(table.state.sortBy, columnDef.colTag);
+    var sortIcon = null;
+    if (sortDef)
+        sortIcon =
+            React.createElement("i", {className: "fa fa-sort-"+sortDef.sortType});
+    var textClasses = "btn-link rt-header-anchor-text" + (table.state.filterInPlace[columnDef.colTag] && columnDef.format !== "number" ? " rt-hide" : "");
+    var numericPanelClasses = "rt-numeric-filter-container" + (columnDef.format === "number" && table.state.filterInPlace[columnDef.colTag] ? "" : " rt-hide");
     var ss = {
         width: "100%",
         height: "13px",
         padding: "0"
     };
-    var headerColumns = [];
-    for (var i = 0; i < table.state.columnDefs.length; i++) {
-        var columnDef = table.state.columnDefs[i];
-        if (table.props.hideSubtotaledColumns) {
-            var subtotalled = table.state.subtotalBy.some(function (subtotalColumn) {
-                return subtotalColumn.colTag === columnDef.colTag;
-            });
-            if (subtotalled) {
-                continue;
-            }
-        }
-
-        var isFirstColumn = (i === 0);
-        /**
-         * sortDef tracks whether the current column is being sorted
-         */
-        var sortDef = findDefByColTag(table.state.sortBy, columnDef.colTag);
-        var sortIcon = null;
-        if (sortDef) {
-            var type = sortDef.sortType === 'asc' ? 'up' : 'down';
-            var idx = 0;
-            table.state.sortBy.forEach(function (sort, index) {
-                if (sort.colTag == columnDef.colTag) {
-                    idx = index + 1;
-                }
-            });
-            sortIcon = (React.createElement("span", {style: {marginLeft: '3px'}}, 
-                React.createElement("i", {style: {marginTop: '2px'}, className: "fa fa-long-arrow-" + type}), 
-                React.createElement("sup", {style: {marginLeft: '2px'}}, idx)
-            ));
-        }
-        var style = {textAlign: "center"};
-        var numericPanelClasses = "rt-numeric-filter-container" + (columnDef.format === "number" && table.state.filterInPlace[columnDef.colTag] ? "" : " rt-hide");
-        var textClasses = "btn-link rt-header-anchor-text";
-
-        // to determine if a column has been filtered. need update accordingly.
-        var isFiltered = columnDef.isFiltered ? true : false;
-
-        headerColumns.push(
-            React.createElement("div", {className: "rt-headers-container", ref: "header-" + columnDef.colTag}, 
-                React.createElement("div", {onDoubleClick: table.handleSetSort.bind(null, columnDef, null), style: style, 
-                    className: "rt-header-element rt-info-header", key: columnDef.colTag}, 
-                    React.createElement("a", {className: textClasses, 
-                        onClick: table.props.filtering && table.props.filtering.disable ? null : toggleFilterBox.bind(table, table, columnDef)}, 
-                        buildHeaderLabel(table, columnDef, isFirstColumn), 
-                        sortIcon, 
-                        React.createElement("i", {style: {marginLeft: '4px'}, className: ("fa fa-filter fa-inverse") + (isFiltered ? "" : " rt-hide")})
-                    )
+    var firstColumn = (
+        React.createElement("div", {className: "rt-headers-container"}, 
+            React.createElement("div", {style: {textAlign: "center"}, onDoubleClick: table.handleSetSort.bind(null,columnDef, null), 
+                 className: "rt-header-element", key: columnDef.colTag}, 
+                React.createElement("a", {href: "#", className: textClasses, 
+                   onClick: table.props.filtering && table.props.filtering.disable ? null : toggleFilterBox.bind(null, table, columnDef.colTag)}, 
+                    buildFirstColumnLabel(table).join("/")
                 ), 
-                 table.state.filterInPlace[columnDef.colTag] && columnDef.format === "number" ?
-                    (React.createElement("div", {className: numericPanelClasses, ref: "numericFilterPanel-" + columnDef.colTag}, 
-                        React.createElement(NumericFilterPanel, {clearFilter: table.handleClearFilter, 
-                            addFilter: table.handleColumnFilter, 
-                            colDef: columnDef, 
-                            currentFilters: table.state.currentFilters}
-                        )
-                    )) : null, 
-                table.state.filterInPlace[columnDef.colTag] ? buildFilterList(table, columnDef) : null, 
-                table.state.searchInPlace[columnDef.colTag] ? buildSearchBox(table, columnDef) : null, 
-                buildMenu({
+                sortIcon, 
+                React.createElement("input", {style: ss, 
+                       className: ("rt-" + columnDef.colTag + "-filter-input rt-filter-input") + (table.state.filterInPlace[columnDef.colTag] && columnDef.format !== "number" ? "" : " rt-hide"), 
+                       onChange: table.handleColumnFilter.bind(null, columnDef), 
+                       onKeyDown: pressedKey.bind(null, table, columnDef.colTag)})
+            ), 
+            React.createElement("div", {className: numericPanelClasses}, 
+                React.createElement(NumericFilterPanel, null)
+            ), 
+            table.state.filterInPlace[columnDef.colTag] ? null : buildMenu({
+                table: table,
+                columnDef: columnDef,
+                style: {textAlign: "left"},
+                isFirstColumn: true
+            })
+        )
+    );
+    var headerColumns = [firstColumn];
+    for (i = 1; i < table.state.columnDefs.length; i++) {
+        columnDef = table.state.columnDefs[i];
+        sortDef = findDefByColTag(table.state.sortBy, columnDef.colTag);
+        sortIcon = null;
+        if (sortDef)
+            sortIcon =
+                React.createElement("i", {className: "fa fa-sort-"+sortDef.sortType});
+
+        style = {textAlign: "center"};
+        numericPanelClasses = "rt-numeric-filter-container" + (columnDef.format === "number" && table.state.filterInPlace[columnDef.colTag] ? "" : " rt-hide");
+        textClasses = "btn-link rt-header-anchor-text" + (table.state.filterInPlace[columnDef.colTag] && columnDef.format !== "number" ? " rt-hide" : "");
+        headerColumns.push(
+            React.createElement("div", {className: "rt-headers-container"}, 
+                React.createElement("div", {onDoubleClick: table.handleSetSort.bind(null,columnDef, null), style: style, 
+                     className: "rt-header-element rt-info-header", key: columnDef.colTag}, 
+                    React.createElement("a", {href: "#", className: textClasses, 
+                       onClick: table.props.filtering && table.props.filtering.disable ? null : toggleFilterBox.bind(null, table, columnDef.colTag)}, 
+                        React.createElement("span", null, columnDef.text, " ", columnDef.isLoading ?
+                            React.createElement("i", {className: "fa fa-spinner fa-spin"}) : null)
+                    ), 
+                    sortIcon, 
+                    React.createElement("input", {style: ss, 
+                           className: ("rt-" + columnDef.colTag + "-filter-input rt-filter-input") + (table.state.filterInPlace[columnDef.colTag] && columnDef.format !== "number" ? "" : " rt-hide"), 
+                           onChange: table.handleColumnFilter.bind(null, columnDef), 
+                           onKeyDown: pressedKey.bind(null, table, columnDef.colTag)})
+                ), 
+                React.createElement("div", {className: numericPanelClasses}, 
+                    React.createElement(NumericFilterPanel, {clearFilter: table.handleClearFilter, 
+                                        addFilter: table.handleColumnFilter, 
+                                        colDef: columnDef, 
+                                        currentFilters: table.state.currentFilters})
+                ), 
+                table.state.filterInPlace[columnDef.colTag] ? null : buildMenu({
                     table: table,
                     columnDef: columnDef,
                     style: style,
-                    isFirstColumn: isFirstColumn
+                    isFirstColumn: false
                 })
             )
         );
@@ -713,19 +368,19 @@ function buildHeaders(table) {
 
     var corner;
     var classString = "btn-link rt-plus-sign";
-    if (!table.props.disableAddColumn && table.props.cornerIcon) {
+    if (!table.props.disableAddColumnIcon && table.props.cornerIcon) {
         corner = React.createElement("img", {src: table.props.cornerIcon});
         classString = "btn-link rt-corner-image";
     }
 
-    // the plus sign at the end to add columns
+
+    // the plus sign at the end
     headerColumns.push(
         React.createElement("span", {className: "rt-header-element rt-add-column", style: {"textAlign": "center"}}, 
             React.createElement("a", {className: classString, onClick: table.props.disableAddColumn ? null : table.handleAdd}, 
                 React.createElement("strong", null, corner ? corner : (table.props.disableAddColumn ? '' : React.createElement("i", {className: "fa fa-plus"})))
             )
         ));
-
     return (
         React.createElement("div", {className: "rt-headers-grand-container"}, 
             React.createElement("div", {key: "header", className: "rt-headers"}, 
@@ -734,65 +389,23 @@ function buildHeaders(table) {
         )
     );
 }
-
-function buildHeaderLabel(table, columnDef, isFirstColumn) {
-    return isFirstColumn ? buildFirstColumnLabel(table) : (React.createElement("span", null, columnDef.text, " ", columnDef.isLoading ? React.createElement("i", {className: "fa fa-spinner fa-spin"}) : null));
-}
-
-function clickCheckbox(props, isSubtotalRow) {
-    var checkboxCallback = props.table.props.checkboxCallback;
-    if (isSubtotalRow) {
-        props.data.treeNode.isChecked = !props.data.treeNode.isChecked;
-        //check all children rows
-        checkAllChildren(props.data.treeNode, props.data.treeNode.isChecked);
-    } else {
-        props.data.isChecked = !props.data.isChecked;
-    }
-    props.table.setState({});
-
-    if (checkboxCallback) {
-        var root = props.table.state.rootNode;
-        var checkedRows = [];
-
-        root.ultimateChildren.forEach(function (uchild) {
-            if (uchild.isChecked) {
-                var row = {};
-                for (var key in uchild) {
-                    if (key !== 'parent' && key !== 'isDetail' && key !== 'isChecked' && key !== 'sectorPath') {
-                        row[key] = uchild[key];
-                    }
-                }
-                checkedRows.push(row);
-            }
-        });
-        checkboxCallback(checkedRows);
-    }
-}
-
-/**
- * check or unchecked all rows under a treenode
- * @param treeNode
- * @param checked
- */
-function checkAllChildren(treeNode, checked) {
-    treeNode.ultimateChildren.forEach(function (uchild) {
-        uchild.isChecked = checked;
-    });
-    treeNode.children.forEach(function (child) {
-        child.isChecked = checked;
-        checkAllChildren(child, checked);
-    });
-}
-
 /**
  * create the first cell for each row, append the proper ident level based on the cell's depth in the subtotaling tree
  * @returns {*}
  */
-function buildFirstCellForSubtotalRow(isGrandTotal, isSubtotalRow) {
+function buildFirstCellForRow() {
     var props = this.props;
     var data = props.data, columnDef = props.columnDefs[0], toggleHide = props.toggleHide;
     var firstColTag = columnDef.colTag, userDefinedElement, result;
-    var hasCheckbox = props.table.props.hasCheckbox;
+
+    // if sectorPath is not available - return a normal cell
+    if (!data.sectorPath)
+        return React.createElement("td", {key: firstColTag, 
+                   onDoubleClick: this.props.filtering && this.props.filtering.doubleClickCell ?
+                     this.props.handleColumnFilter(null, columnDef) : null}, 
+            data[firstColTag]
+        );
+
     // styling & ident
     var identLevel = !data.isDetail ? data.sectorPath.length - 1 : data.sectorPath.length;
     var firstCellStyle = {
@@ -801,115 +414,56 @@ function buildFirstCellForSubtotalRow(isGrandTotal, isSubtotalRow) {
 
     userDefinedElement = (!data.isDetail && columnDef.summaryTemplate) ? columnDef.summaryTemplate.call(null, data) : null;
 
-    if (isGrandTotal) {
-        if (data[firstColTag]) {
-            firstCellStyle.width = data[firstColTag].length + "em";
-        }
-        result = (
-            React.createElement("div", {key: firstColTag, className: "rt-grand-total-cell"}, 
-                React.createElement("div", {style: firstCellStyle, className: "rt-grand-total-cell-content"}, 
-                        data[firstColTag] ? data[firstColTag] : React.createElement("span", null, " ")
-                )
-            )
-        );
-    } else if (isSubtotalRow) {
-        var noCollapseIcon = data.treeNode.noCollapseIcon;
-
-        result = (
-            React.createElement("td", {key: firstColTag}, 
-                React.createElement("div", null, 
-                 hasCheckbox ? React.createElement("span", {style: {'paddingLeft': '10px'}}, 
-                    React.createElement("input", {checked: props.data.treeNode.isChecked, type: "checkbox", onClick: clickCheckbox.bind(null, props, true)})
-                ) : '', 
-                    React.createElement("a", {style: firstCellStyle, onClick: toggleHide.bind(null, data), className: "btn-link rt-expansion-link"}, 
-                         noCollapseIcon ? '' : data.treeNode.collapsed ? React.createElement("i", {className: "fa fa-plus"}) : React.createElement("i", {className: "fa fa-minus"})
+    if (data.isDetail)
+        result = React.createElement("td", {style: firstCellStyle, key: firstColTag, 
+                     onDoubleClick: this.props.filtering && this.props.filtering.doubleClickCell ?
+                this.props.handleColumnFilter(null, columnDef) : null}, 
+            this.props.enableEditColumn && (data[firstColTag]==='' || data[firstColTag]===null || data[firstColTag]===undefined)?
+                React.createElement("input", {type: "text", id: columnDef.colTag, defaultValue: data[firstColTag], 
+                                                                               onBlur: this.saveDataField.bind(this, columnDef,this.props.data, this.props.onCellChangeCallback), 
+                                                                               onKeyPress: this.checkInput.bind(this,columnDef)})
+                : data[firstColTag]
+           );
+    else {
+        result =
+            (
+                React.createElement("td", {style: firstCellStyle, key: firstColTag}, 
+                    React.createElement("a", {onClick: toggleHide.bind(null, data), className: "btn-link rt-expansion-link"}, 
+                        data.treeNode.collapsed ? React.createElement("i", {className: "fa fa-plus"}) : React.createElement("i", {className: "fa fa-minus"})
                     ), 
-                "  ", 
+                    "  ", 
                     React.createElement("strong", null, data[firstColTag]), 
                     userDefinedElement
                 )
-            )
-        );
-    } else if (!isSubtotalRow) {
-        result = (
-            React.createElement("td", {key: firstColTag}, 
-                 hasCheckbox ? React.createElement("span", {style: {'paddingLeft': '10px'}}, 
-                    React.createElement("input", {checked: props.data.isChecked, type: "checkbox", onClick: clickCheckbox.bind(null, props, false)})
-                ) : ''
-            )
-        );
-        return result;
+            );
     }
-
     return result;
 }
 
-function buildPageNavigator(table, paginationAttr) {
-    return table.props.columnDefs.length > 0 && !table.props.disablePagination ?
+function buildFooter(table, paginationAttr) {
+    if(table.state.disableInfiniteScrolling === undefined){
+        table.state.disableInfiniteScrolling = table.props.disableInfiniteScrolling;
+    }
+    return table.props.columnDefs.length > 0 && !table.state.disablePagination ?
         (React.createElement(PageNavigator, {
             items: paginationAttr.allPages.slice(paginationAttr.pageDisplayRange.start, paginationAttr.pageDisplayRange.end), 
             activeItem: table.state.currentPage, 
             numPages: paginationAttr.pageEnd, 
-            handleClick: table.handlePageClick})) : null;
+            handleClick: table.handlePageClick, 
+            handleShowAllRows: table.handleShowAllRows}
+        )) : null;
 }
-
-function numberWithCommas(x) {
-    return x.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-}
-
-function buildFooter(paginationAttr, rowNum) {
-    var start = paginationAttr.lowerVisualBound + 1;
-    var end = Math.min(paginationAttr.upperVisualBound + 1, rowNum);
-
-    return (
-        React.createElement("div", null, 
-            React.createElement("p", {className: "rt-display-inline rt-footer-count"}, 
-                "Showing " + start + " to " + end + " rows out of " + numberWithCommas(rowNum) + " rows"
-            ), 
-            this.props.disableInfiniteScrolling ? buildPageNavigator(this, paginationAttr) : null
-        )
-    )
-}
-
-/**
- *  if has subtotal, add an additional column as the first column, otherwise remove subtotal column
- */
-function addExtraColumnForSubtotalBy() {
-    if (this.state.subtotalBy.length > 0 && this.state.columnDefs[0].colTag !== 'subtotalBy') {
-        this.state.columnDefs.unshift({
-            colTag: "subtotalBy",
-            text: "group"
-        });
-        var sortSubtotalByColumn = this.state.sortBy.some(function (sortby) {
-            return sortby.colTag === 'subtotalBy';
-        });
-        if (sortSubtotalByColumn) {
-            this.state.rootNode.sortTreeBySubtotals(this.state.subtotalBy, 'asc');
-        }
-    } else if (this.state.subtotalBy.length == 0 && this.state.columnDefs[0].colTag === 'subtotalBy') {
-        this.state.columnDefs.shift();
-    }
-};//Contants used for date subtotalling
-const WEEKLY = "Weekly";
-const MONTHLY = "Monthly";
-const QUARTERLY = "Quarterly";
-const YEARLY = "Yearly";
-const DAILY = "Daily";
-const DATE_FORMAT = "date";
-const OLDEST = "Oldest";
-
-/**
+;/**
  * find the right sector name for the current row for the given level of row grouping
  * this method can take partition subtotalBy columns that are numeric in nature and partition rows based on where they fall
  * in the partition
  * @param subtotalBy the column to group subtotalBy
  * @param row the data row to determine the sector name for
- * @param partitions the criteria for creating partitions for date columns
  */
-function classifyRow(row, subtotalBy, partitions) {
+function getSectorName(row, subtotalBy) {
     var sectorName = "", sortIndex = null;
-    if (subtotalBy.format == "number" || subtotalBy.format == "currency" || (subtotalBy.format == "date" && subtotalBy.formatInstructions != null)) {
-        var result = resolvePartitionName(subtotalBy, row, partitions);
+    if (subtotalBy.format == "number" || subtotalBy.format == "currency") {
+        var result = resolvePartitionName(subtotalBy, row);
         sectorName = result.sectorName;
         sortIndex = result.sortIndex;
     } else
@@ -919,8 +473,8 @@ function classifyRow(row, subtotalBy, partitions) {
 
 function aggregateSector(partitionResult, columnDefs, subtotalBy) {
     var result = {};
-    for (var i = 0; i < columnDefs.length; i++)
-        result[columnDefs[i].colTag] = aggregateColumn(partitionResult, columnDefs[i], subtotalBy, columnDefs);
+    for (var i = 1; i < columnDefs.length; i++)
+        result[columnDefs[i].colTag] = aggregateColumn(partitionResult, columnDefs[i], subtotalBy);
     return result;
 }
 
@@ -930,70 +484,23 @@ function aggregateSector(partitionResult, columnDefs, subtotalBy) {
  * ----------------------------------------------------------------------
  */
 
-function resolvePartitionName(subtotalBy, row, partitions) {
+function resolvePartitionName(subtotalBy, row) {
     var sectorName = "", sortIndex = "";
-
-    if (subtotalBy.subtotalByRange) {
-        if (row[subtotalBy.colTag] != null) {
-            for (var i = 0; i < subtotalBy.subtotalByRange.length; i++) {
-                if (row[subtotalBy.colTag] < subtotalBy.subtotalByRange[i]) {
-                    if (subtotalBy.format == DATE_FORMAT && subtotalBy.formatInstructions != null) {
-                        var dateStr1 = moment(subtotalBy.subtotalByRange[i - 1]).format(subtotalBy.formatInstructions);
-                        var dateStr2 = moment(subtotalBy.subtotalByRange[i]).add(-1, "days").format(subtotalBy.formatInstructions);
-                        if (partitions == YEARLY) {
-                            //dateStr1 = new Date(row[subtotalBy.colTag]).getFullYear();
-                            //sectorName = subtotalBy.text + " " + dateStr1;
-                            sectorName = new Date(row[subtotalBy.colTag]).getFullYear();
-                        }
-                        else if (partitions == DAILY) {
-                            sectorName = dateStr1;
-                        }
-                        else if (partitions == MONTHLY) {
-                            sectorName = moment(subtotalBy.subtotalByRange[i - 1]).format("MMM YYYY");
-                        }
-                        else {
-                            sectorName = dateStr1 + " - " + dateStr2;
-                        }
-                    }
-                    else {
-                        sectorName = (i != 0 ? subtotalBy.subtotalByRange[i - 1] : 0) + " - " + subtotalBy.subtotalByRange[i];
-                    }
-                    sortIndex = i;
-                    break;
-                }
-            }
-            if (!sectorName) {
-                if (subtotalBy.format == DATE_FORMAT && subtotalBy.formatInstructions != null) {
-                    var date = new Date(subtotalBy.subtotalByRange[subtotalBy.subtotalByRange.length - 1]);
-                    var dateStr = moment(date).format(subtotalBy.formatInstructions);
-                    if (partitions == YEARLY) {
-                        dateStr = new Date(dateStr).getFullYear();
-                    }
-                    else if (partitions == MONTHLY) {
-                        dateStr = moment(date).format("MMM YYYY");
-                    }
-                    else if (partitions == DAILY) {
-                        dateStr = moment(date).format("YYYY/MM/DD");
-                    }
-                    sectorName = dateStr + "+";
-                }
-                else {
-                    sectorName = subtotalBy.subtotalByRange[subtotalBy.subtotalByRange.length - 1] + "+";
-                }
-                sortIndex = i + 1;
+    if (subtotalBy.subtotalByRange && row[subtotalBy.colTag]) {
+        for (var i = 0; i < subtotalBy.subtotalByRange.length; i++) {
+            if (row[subtotalBy.colTag] < subtotalBy.subtotalByRange[i]) {
+                sectorName = subtotalBy.text + " " + (i != 0 ? (subtotalBy.subtotalByRange[i - 1] * 1000) : 0) + " - " + (subtotalBy.subtotalByRange[i] * 1000);
+                sortIndex = i;
+                break;
             }
         }
-    }
-    else {
-        if (subtotalBy.format == DATE_FORMAT && subtotalBy.formatInstructions != null) {
-            sectorName = moment(row[subtotalBy.colTag]).format(subtotalBy.formatInstructions);
-        } else {
-            sectorName = row[subtotalBy.colTag];
-        }
-        if (subtotalBy.format == DATE_FORMAT && subtotalBy.format == "number") {
-            sortIndex = row[subtotalBy.colTag];
+        if (!sectorName) {
+            sectorName = subtotalBy.text + " " + (subtotalBy.subtotalByRange[subtotalBy.subtotalByRange.length - 1] * 1000) + "+";
+            sortIndex = i + 1;
         }
     }
+    else
+        sectorName = subtotalBy.text;
     return {sectorName: sectorName, sortIndex: sortIndex};
 }
 
@@ -1023,21 +530,10 @@ function resolveAggregationMethod(columnDef, subtotalBy) {
     return result;
 }
 
-function removeFilteredRow(rows) {
-    var ret = [];
-    rows.forEach(function (row) {
-        if (!row.hiddenByFilter) {
-            ret.push(row);
-        }
-    });
-    return ret;
-}
-
-function aggregateColumn(partitionResult, columnDef, subtotalBy, columnDefs) {
+function aggregateColumn(partitionResult, columnDef, subtotalBy) {
     var result;
     var aggregationMethod = resolveAggregationMethod(columnDef, subtotalBy);
 
-    partitionResult = removeFilteredRow(partitionResult);
     // call custom aggregation function or use one of the stock aggregation functions
     if (typeof aggregationMethod === 'function')
         result = aggregationMethod({data: partitionResult, columnDef: columnDef});
@@ -1061,24 +557,11 @@ function aggregateColumn(partitionResult, columnDef, subtotalBy, columnDefs) {
             case "most_data_points":
                 result = _mostDataPoints({data: partitionResult, columnDef: columnDef});
                 break;
-            case "weighted_average":
-                result = _weightedAverage({data: partitionResult, columnDef: columnDef});
-                break;
-            case "non_zero_weighted_average":
-                result = _nonZeroweightedAverage({data: partitionResult, columnDef: columnDef});
-                break;
-            case "distinct_sum":
-                result = _distinctSum({data: partitionResult, columnDef: columnDef});
-                break;
-            case "percentage_contribution":
-                result = _percentageContribution({data: partitionResult, columnDef: columnDef, columnDefs: columnDefs});
-                break;
             default :
                 result = "";
         }
     return result;
 }
-
 
 function _straightSumAggregation(options) {
     var data = options.data, columnDef = options.columnDef, result = 0, temp = 0;
@@ -1089,7 +572,10 @@ function _straightSumAggregation(options) {
     return result;
 }
 function _average(options) {
-    return _simpleAverage(options);
+    if (options.columnDef.weightBy)
+        return _weightedAverage(options);
+    else
+        return _simpleAverage(options);
 }
 function _simpleAverage(options) {
     var sum = _straightSumAggregation(options);
@@ -1101,23 +587,6 @@ function _simpleAverage(options) {
     return count == 0 ? "" : sum / count;
 }
 
-function _nonZeroweightedAverage(options) {
-    var data = options.data, columnDef = options.columnDef, weightBy = options.columnDef.weightBy;
-    var sumProduct = 0;
-    var zeroWeightSum = 0;
-    for (var i = 0; i < data.length; i++) {
-        sumProduct += (data[i][columnDef.colTag] || 0 ) * (data[i][weightBy.colTag] || 0);
-        //find the zero values
-        if (!data[i][columnDef.colTag] || data[i][columnDef.colTag] === 0) {
-            zeroWeightSum += (data[i][weightBy.colTag] || 0);
-        }
-    }
-    var weightSum = _straightSumAggregation({data: data, columnDef: weightBy});
-    weightSum -= zeroWeightSum;
-
-    return weightSum == 0 ? "" : sumProduct / weightSum;
-}
-
 function _weightedAverage(options) {
     var data = options.data, columnDef = options.columnDef, weightBy = options.columnDef.weightBy;
     var sumProduct = 0;
@@ -1125,56 +594,11 @@ function _weightedAverage(options) {
         sumProduct += (data[i][columnDef.colTag] || 0 ) * (data[i][weightBy.colTag] || 0);
 
     var weightSum = _straightSumAggregation({data: data, columnDef: weightBy});
-    return weightSum == 0 ? "" : sumProduct / weightSum;
-}
-
-function _distinctSum(options) {
-    var data = options.data;
-    var columnDef = options.columnDef;
-    var aggregationLevel = columnDef.aggregationLevel;
-    var result = 0, temp = 0;
-    var distinctValues = {};
-    for (var i = 0; i < data.length; i++) {
-        var levelValue = data[i][aggregationLevel.colTag];
-        distinctValues[levelValue] = data[i][columnDef.colTag];
-    }
-    for (var level in distinctValues) {
-        temp = distinctValues[level] || 0;
-        result += temp;
-    }
-    return result;
-}
-
-function _percentageContribution(options) {
-    var data = options.data;
-    var columnDef = options.columnDef;
-    var numerator = columnDef.numerator;
-    var denominator = columnDef.denominator;
-    if (!denominator || !denominator.colTag || !numerator || !numerator.colTag) {
-        //don't define columns
-        return ""
-    }
-
-    var numeratorValue = _straightSumAggregation({data: data, columnDef: numerator}) || 0;
-
-    var denominatorColumn = null;
-    options.columnDefs.forEach(function (column) {
-        if (column.colTag == denominator.colTag) {
-            denominatorColumn = column;
-        }
-    });
-
-    if (!denominatorColumn) {
-        var denominatorValue = 0;
-    } else {
-        denominatorValue = _distinctSum({data: data, columnDef: denominatorColumn});
-    }
-
-    return denominatorValue == 0 ? "" : ((numeratorValue / denominatorValue) * 100);
+    return weightSum == 0 ? 0 : sumProduct / weightSum;
 }
 
 function _count(options) {
-    return (options.data.length || 0) + "";
+    return options.data.length || 0;
 }
 
 /**
@@ -1192,17 +616,10 @@ function _countDistinct(options) {
     /**
      * collect all rows of the given column in data as an array
      */
-    var allData =
+    const allData =
         options.data.map(function (row) {
             return row[columnDef.colTag];
         });
-
-    //convert date number to date string
-    if (columnDef.format && columnDef.format.toLowerCase() === DATE_FORMAT) {
-        allData = allData.map(function (item) {
-            return convertDateNumberToString(columnDef, item);
-        })
-    }
 
     /**
      * iterate through allData - keeping only unique members
@@ -1212,65 +629,13 @@ function _countDistinct(options) {
         if (allData[j] !== "" && allData[j] !== null && uniqData.indexOf(allData[j]) == -1)
             uniqData.push(allData[j]);
     }
-
-    return uniqData.length == 1 ? uniqData[0] : applyThousandSeparator(uniqData.length);
+    return uniqData.length == 1 ? uniqData[0] : uniqData.length;
 }
 
-function _countAndDistinctPureJS(options) {
-    var data = options.data, columnDef = options.columnDef;
+function _countAndDistinct(options) {
     var count = _count(options);
     var distinctCount = _countDistinct(options);
-    return count == 1 ? formatNumber(distinctCount, columnDef, columnDef.formatConfig) : "(" + applyThousandSeparator(distinctCount) + "/" + applyThousandSeparator(count) + ")"
-}
-
-// convert and format dates
-function convertDateNumberToString(columnDef, value) {
-    var displayContent = value;
-    if (columnDef && columnDef.format && columnDef.format.toLowerCase() === DATE_FORMAT) {
-        // if displayContent is a number, we assume displayContent is in milliseconds
-        if (typeof value === "number") {
-            if (columnDef.formatInstructions != null) { //If format instruction is specified
-                displayContent = moment(value).format(columnDef.formatInstructions)
-            } else {
-                displayContent = new Date(value).toLocaleDateString();
-            }
-        }
-    }
-    return displayContent;
-}
-
-function _countAndDistinctUnderscoreJS(options) {
-    var data = options.data, columnDef = options.columnDef;
-    var sortedData = _.pluck(data, columnDef.colTag).sort(function (a, b) {
-        if (a === b)
-            return 0;
-        return a > b ? 1 : -1;
-    });
-
-    //convert date number to date string
-    if (columnDef.format && columnDef.format.toLowerCase() === DATE_FORMAT) {
-        sortedData = sortedData.map(function (item) {
-            return convertDateNumberToString(columnDef, item);
-        })
-    }
-
-    const uniqData = _.chain(sortedData).uniq(true).compact().value();
-    columnDef.formatConfig = buildLAFConfigObject(columnDef);
-    return "(" + (uniqData.length === 1 ? formatNumber(uniqData[0], columnDef, columnDef.formatConfig) : applyThousandSeparator(uniqData.length)) + "/" + applyThousandSeparator(data.length) + ")";
-}
-
-/**
- * if underscorejs is included, we will use a much more efficient algo to aggregate and count
- * otherwise a pure javascript approach is used but is slow for large number of rows
- * @param options
- * @return {*}
- * @private
- */
-function _countAndDistinct(options) {
-    if (typeof _ === 'function')
-        return _countAndDistinctUnderscoreJS(options);
-    else
-        return _countAndDistinctPureJS(options);
+    return count == 1 ? distinctCount : "(" + distinctCount + "/" + count + ")"
 }
 
 function _mostDataPoints(options) {
@@ -1307,7 +672,7 @@ function _mostDataPoints(options) {
         $.each(value, function(j, value2) {
             if(table.state.columnDefs[j] && table.state.columnDefs[j].format && table.state.columnDefs[j].format.toLowerCase() === "date" ){
                 if (typeof value2 === "number") // if displayContent is a number, we assume displayContent is in milliseconds
-                    value2 = new Date(value2).toLocaleDateString();
+                    value2 = new Date(value2).toLocaleString('en',{timeZone : 'UTC',year: 'numeric', day:'numeric',month:'numeric'});
 
             }
             excel += "<td>"+parseString(value2)+"</td>";
@@ -1363,56 +728,29 @@ function _mostDataPoints(options) {
         tempFrame.remove();
     }
     else{          //other browsers
-        var uri = 'data:application/vnd.ms-excel;base64,',
-            template = excelFile,
-            base64 = function(s) {
-                return window.btoa(unescape(encodeURIComponent(s)));
-            },
-            format = function(s, c) {
-                return s.replace(/{(\w+)}/g, function(m, p) {
-                    return c[p];
-                });
-            };
-        // get the table data
-        var table = excel;
-        var ctx = {
-            worksheet: filename,
-            table: table
-        };
-        var blobUrl = uri + base64(format(template, ctx));
-        // var base64data = $.base64.encode(excelFile);
-        // var blob = b64toBlob(base64data, "application/vnd.ms-excel");
-        // var blobUrl = URL.createObjectURL(blob);
-        $("<a></a>").attr("download", filename+'.xls')
-            .attr("href", blobUrl)
-            .append("<div id='download-me-now'></div>")
-            .appendTo("body");
-        $("#download-me-now").click().remove();
+        // var uri = 'data:application/vnd.ms-excel;base64,',
+        //     template = excelFile,
+        //     base64 = function(s) {
+        //         return window.btoa(unescape(encodeURIComponent(s)));
+        //     },
+        //     format = function(s, c) {
+        //         return s.replace(/{(\w+)}/g, function(m, p) {
+        //             return c[p];
+        //         });
+        //     };
+        // var table = excel;
+        // var ctx = {
+        //     worksheet: filename,
+        //     table: table
+        // };
+        var blobUrl = new Blob([excelFile], {type: 'data:application/vnd.ms-excel;charset=utf-8'});
+        saveAs(blobUrl,filename+'.xls');
+        // $("<a></a>").attr("download", filename+'.xls')
+        //     .attr("href", blobUrl)
+        //     .append("<div id='download-me-now'></div>")
+        //     .appendTo("body");
+        // $("#download-me-now").click().remove();
     }
-}
-
-function b64toBlob(b64Data, contentType, sliceSize) {
-    contentType = contentType || '';
-    sliceSize = sliceSize || 512;
-
-    var byteCharacters = atob(b64Data);
-    var byteArrays = [];
-
-    for (var offset = 0; offset < byteCharacters.length; offset += sliceSize) {
-        var slice = byteCharacters.slice(offset, offset + sliceSize);
-
-        var byteNumbers = new Array(slice.length);
-        for (var i = 0; i < slice.length; i++) {
-            byteNumbers[i] = slice.charCodeAt(i);
-        }
-
-        var byteArray = new Uint8Array(byteNumbers);
-
-        byteArrays.push(byteArray);
-    }
-
-    var blob = new Blob(byteArrays, {type: contentType});
-    return blob;
 }
 
 function exportToPDF(data, filename, table){
@@ -1490,7 +828,7 @@ function exportToPDF(data, filename, table){
             }, startColPosition);
             if( table.state.columnDefs[index].format && table.state.columnDefs[index].format.toLowerCase() === "date" ){
                 if (typeof value2 === "number") // if displayContent is a number, we assume displayContent is in milliseconds
-                    value2 = new Date(value2).toLocaleDateString();
+                    value2 = new Date(value2).toLocaleString('en',{timeZone : 'UTC',year: 'numeric', day:'numeric',month:'numeric'});
 
             }
             doc.text(colPosition,rowPosition, parseString(value2, true));
@@ -1733,21 +1071,19 @@ var ReactTable = React.createClass({displayName: "ReactTable",
         subtotalBy: React.PropTypes.arrayOf(React.PropTypes.object),
         sortBy: React.PropTypes.arrayOf(React.PropTypes.object),
         selectedRows: React.PropTypes.arrayOf(React.PropTypes.string),
+        newIssuesRows: React.PropTypes.arrayOf(React.PropTypes.object),
         rowKey: React.PropTypes.string,
-        cellRightClickMenu: React.PropTypes.object,
+        dropdownTypeahead: React.PropTypes.object,
         /**
          * callbacks that the table accept
          */
         afterColumnRemove: React.PropTypes.func,
         beforeColumnAdd: React.PropTypes.func,
-        onSelectCallback: React.PropTypes.func, // if a detail row is clicked with ctrl key pressed
+        onSelectCallback: React.PropTypes.func,
+        onUnselectAllCallback: React.PropTypes.func,
         onSummarySelectCallback: React.PropTypes.func,
-        onRowClickCallback: React.PropTypes.func, // if a detail row is clicked
-        onSummaryRowClickCallback: React.PropTypes.func,
         onRightClick: React.PropTypes.func,
-        afterFilterCallback: React.PropTypes.func,
-        buildFiltersCallback: React.PropTypes.func,
-        checkboxCallback: React.PropTypes.func, // when click checkbox, invoke this callback
+        onCellChangeCallback: React.PropTypes.func,
         /**
          * props to selectively disable table features
          */
@@ -1756,12 +1092,7 @@ var ReactTable = React.createClass({displayName: "ReactTable",
         disableInfiniteScrolling: React.PropTypes.bool,
         disableExporting: React.PropTypes.bool,
         disableGrandTotal: React.PropTypes.bool,
-        enableScrollPage: React.PropTypes.bool,
-        hideSubtotaledColumns: React.PropTypes.bool,
-        hideSingleSubtotalChild: React.PropTypes.bool,
-        hasCheckbox: React.PropTypes.bool, // has a check box in subtotal column
-        disableRemoveColumn: React.PropTypes.bool, // disable 'remove column' in subMenu
-        disableDownloadPDF: React.PropTypes.bool, // disable 'Download PDF' in subMenu
+        enableEditColumn: React.PropTypes.bool,
         /**
          * misc props
          */
@@ -1788,21 +1119,14 @@ var ReactTable = React.createClass({displayName: "ReactTable",
         const sortBy = this.state.sortBy;
         const existing = findDefByColTag(sortBy, columnDef.colTag);
         sortType = sortType || (existing && existing.sortType === 'asc' ? 'desc' : 'asc');
-        if (sortBy.length > 0) {
-            sortBy.length = 0;
-        }
+        while (sortBy.length > 0)
+            sortBy.pop();
         sortBy.push({colTag: columnDef.colTag, sortType: sortType});
         var newState = {
             sortBy: sortBy
         };
-
-        if (columnDef.colTag === 'subtotalBy') {
-            this.state.rootNode.sortTreeBySubtotals(this.state.subtotalBy, sortType);
-        } else {
-            this.state.rootNode.sortNodes(convertSortByToFuncs(this.state.columnDefs, sortBy));
-        }
+        this.state.rootNode.sortNodes(convertSortByToFuncs(this.state.columnDefs, sortBy));
         newState.rootNode = this.state.rootNode;
-        newState.buildRasterizedData = true;
         this.setState(newState);
 
     },
@@ -1824,8 +1148,6 @@ var ReactTable = React.createClass({displayName: "ReactTable",
         };
         this.state.rootNode.sortNodes(convertSortByToFuncs(this.state.columnDefs, sortBy));
         newState.rootNode = this.state.rootNode;
-        newState.buildRasterizedData = true;
-
         this.setState(newState);
     },
     /**
@@ -1839,10 +1161,10 @@ var ReactTable = React.createClass({displayName: "ReactTable",
          * do not set subtotalBy or sortBy to blank array - simply pop all elements off, so it won't disrupt external reference
          */
         const sortBy = this.state.sortBy;
-        sortBy.length = 0;
+        while (sortBy.length > 0)
+            sortBy.pop();
         newState.sortBy = sortBy;
         newState.rootNode = createNewRootNode(this.props, this.state);
-        newState.buildRasterizedData = true;
         this.setState(newState);
     },
     handleColumnFilter: ReactTableHandleColumnFilter,
@@ -1854,15 +1176,17 @@ var ReactTable = React.createClass({displayName: "ReactTable",
     handleSubtotalBy: ReactTableHandleSubtotalBy,
     handleClearSubtotal: ReactTableHandleClearSubtotal,
     handlePageClick: ReactTableHandlePageClick,
+    handleShowAllRows: ReactTableHandleShowAllRows,
     handleSelect: ReactTableHandleSelect,
+    handleShowSelected: ReactTableHandleShowSelected,
+    handleUnselect: ReactTableHandleUnselectAll,
     handleCollapseAll: function () {
         this.state.rootNode.foldSubTree();
         this.state.rootNode.collapseImmediateChildren();
         this.setState({
             currentPage: 1,
             lowerVisualBound: 0,
-            upperVisualBound: this.props.pageSize,
-            buildRasterizedData: true
+            upperVisualBound: this.props.pageSize
         });
     },
     handleExpandAll: function () {
@@ -1870,8 +1194,7 @@ var ReactTable = React.createClass({displayName: "ReactTable",
         this.setState({
             currentPage: 1,
             lowerVisualBound: 0,
-            upperVisualBound: this.props.pageSize,
-            buildRasterizedData: true
+            upperVisualBound: this.props.pageSize
         });
     },
     handleDownload: function (type) {
@@ -1883,16 +1206,12 @@ var ReactTable = React.createClass({displayName: "ReactTable",
 
         var rasterizedData = rasterizeTree({
             node: this.state.rootNode,
-            firstColumn: firstColumn
+            firstColumn: firstColumn,
+            selectedDetailRows: this.state.selectedDetailRows
         });
 
-        var firstColumnLabel = buildFirstColumnLabel(this);
         $.each(this.props.columnDefs, function () {
-            if (this.colTag === 'subtotalBy') {
-                objToExport.headers.push(firstColumnLabel);
-            } else {
-                objToExport.headers.push(this.text);
-            }
+            objToExport.headers.push(this.text);
         });
 
         $.each(rasterizedData, function () {
@@ -1919,7 +1238,7 @@ var ReactTable = React.createClass({displayName: "ReactTable",
             state = false;
         }
         else {
-            selectedDetailRows[key] = true;
+            selectedDetailRows[key] = 1;
             state = true;
         }
         this.setState({
@@ -1943,7 +1262,7 @@ var ReactTable = React.createClass({displayName: "ReactTable",
     },
     forceSort: function () {
         this.state.rootNode.sortNodes(convertSortByToFuncs(this.state.columnDefs, this.state.sortBy));
-        this.setState({buildRasterizedData: true});
+        this.setState({});
     },
     getDetailToggleState: function (key) {
         return this.state.selectedDetailRows[key] && true;
@@ -1976,28 +1295,24 @@ var ReactTable = React.createClass({displayName: "ReactTable",
         if (idx)
             columnDefs.splice(idx + 1, 0, columnDef);
         else
-            columnDefs.push(columnDef);
+            columnDefs.push(columnDef)
         /**
          * we will want to perform an aggregation
          */
         recursivelyAggregateNodes(this.state.rootNode, this.state);
         this.setState({
-            columnDefs: columnDefs,
-            buildRasterizedData: true
+            columnDefs: columnDefs
         });
     },
     handleScroll: function (e) {
         const $target = $(e.target);
         const scrollTop = $target.scrollTop();
-
-        if (scrollTop == this.state.lastScrollTop) {
-            // scroll horizentally
-            return;
-        }
-
         const height = $target.height();
         const totalHeight = $target.find("tbody").height();
         const avgRowHeight = totalHeight / $target.find("tbody > tr").length;
+        if(this.state.pageSize === undefined){
+            this.state.pageSize = this.props.pageSize;
+        }
         /**
          * always update lastScrollTop on scroll event - it helps us determine
          * whether the next scroll event is up or down
@@ -2007,17 +1322,17 @@ var ReactTable = React.createClass({displayName: "ReactTable",
          * we determine the correct display boundaries by keeping the distance between lower and upper visual bound
          * to some constant multiple of pageSize
          */
-        const rowDisplayBoundry = 2 * this.props.pageSize;
+        const rowDisplayBoundry = 2 * this.state.pageSize;
         if (scrollTop < this.state.lastScrollTop && scrollTop <= 0) {
             // up scroll limit triggered
-            newState.lowerVisualBound = Math.max(this.state.lowerVisualBound - this.props.pageSize, 0);
+            newState.lowerVisualBound = Math.max(this.state.lowerVisualBound - this.state.pageSize, 0);
             newState.upperVisualBound = newState.lowerVisualBound + rowDisplayBoundry;
             /**
              * if top most rows reached, do nothing, otherwise reset scrollTop to preserve current view
              */
             if (!(newState.lowerVisualBound === 0))
                 setTimeout(function () {
-                    $target.scrollTop(Math.max(scrollTop + this.props.pageSize * avgRowHeight, 0));
+                    $target.scrollTop(Math.max(scrollTop + this.state.pageSize * avgRowHeight, 0));
                 }.bind(this));
 
         } else if (scrollTop > this.state.lastScrollTop && (scrollTop + height) >= totalHeight) {
@@ -2026,7 +1341,7 @@ var ReactTable = React.createClass({displayName: "ReactTable",
              * we either increment upperVisualBound by a single page (specified via props.pageSize) or the max rows that can be displayed
              * we know the end has been reached if upperVisualBound + pageSize > maxRows
              */
-            newState.upperVisualBound = this.state.upperVisualBound + this.props.pageSize > this.state.maxRows ? this.state.maxRows : this.state.upperVisualBound + this.props.pageSize;
+            newState.upperVisualBound = this.state.upperVisualBound + this.state.pageSize > this.state.maxRows ? this.state.maxRows : this.state.upperVisualBound + this.state.pageSize;
             newState.lowerVisualBound = Math.max(newState.upperVisualBound - rowDisplayBoundry, 0);
             /**
              * if previous upperVisualBound is the default (props.pageSize), it could actually be greater than the current
@@ -2044,8 +1359,10 @@ var ReactTable = React.createClass({displayName: "ReactTable",
     /* ----------------------------------------- */
 
     componentDidMount: function () {
-        //TODO: should listen on onWheel and give some conditions
-        if (!this.props.disableInfiniteScrolling)
+        if(this.state.disableInfiniteScrolling === undefined){
+            this.state.disableInfiniteScrolling = this.props.disableInfiniteScrolling;
+        }
+        if (!this.state.disableInfiniteScrolling)
             $(this.getDOMNode()).find(".rt-scrollable").get(0).addEventListener('scroll', this.handleScroll);
         setTimeout(function () {
             adjustHeaders.call(this);
@@ -2058,149 +1375,66 @@ var ReactTable = React.createClass({displayName: "ReactTable",
         window.addEventListener('resize', adjustHeaders.bind(this));
         var $node = $(this.getDOMNode());
         $node.find(".rt-scrollable").bind('scroll', function () {
-            //when scroll table body horizontally, scroll header and footer also
             $node.find(".rt-headers").css({'overflow': 'auto'}).scrollLeft($(this).scrollLeft());
             $node.find(".rt-headers").css({'overflow': 'hidden'});
-
-            $node.find(".rt-grand-total").css({'overflow': 'auto'}).scrollLeft($(this).scrollLeft());
-            $node.find(".rt-grand-total").css({'overflow': 'hidden'});
         });
         bindHeadersToMenu($node);
-
-        // build dropdown list for column filter
-        buildFilterData.call(this, false);
     },
     componentWillMount: function () {
     },
     componentWillUnmount: function () {
+        if(this.state.disableInfiniteScrolling === undefined){
+            this.state.disableInfiniteScrolling = this.props.disableInfiniteScrolling;
+        }
         window.removeEventListener('resize', adjustHeaders.bind(this));
-        if (this.props.disableInfiniteScrolling)
+        if (this.state.disableInfiniteScrolling)
             $(this.getDOMNode()).find(".rt-scrollable").get(0).removeEventListener('scroll', this.handleScroll);
     },
     componentDidUpdate: function () {
-        if (this.state.scrollToLeft) {
-            this.state.scrollToLeft = false;
-            $(this.refs.scrollBody.getDOMNode()).scrollLeft(0);
-        }
-        //console.time('adjust headers');
         adjustHeaders.call(this);
-        //console.timeEnd('adjust headers');
         bindHeadersToMenu($(this.getDOMNode()));
     },
-
-    /*******public API, called outside react table*/
-    addFilter: function (columnDefToFilterBy, filterData) {
-        this.handleColumnFilter.call(this, columnDefToFilterBy, filterData);
-    },
-    removeFilter: function ReactTableHandleRemoveFilter(colDef, dontSet) {
-        this.handleClearFilter.call(this, colDef, dontSet);
-    },
-    removeAllFilter: function () {
-        this.handleClearAllFilters.call(this);
-    },
-    exportDataWithSubtotaling: function () {
-        var dataCopy = rasterizeTree({
-            node: this.state.rootNode,
-            firstColumn: this.state.columnDefs[0]
-        }, this.state.subtotalBy.length > 0, true);
-
-        var data = [];
-        for (var i = 0; i < dataCopy.length; i++) {
-            //shallow copy each row
-            var row = dataCopy[i];
-            if (row.treeNode) {
-                delete row.treeNode
-            }
-            if (row.parent) {
-                delete row.parent;
-            }
-        }
-        return dataCopy;
-    },
-    recreateTable: function(){
-        this.state.rootNode = createNewRootNode(this.props, this.state);
-    },
-    exportDataWithoutSubtotaling: function () {
-        var dataCopy = rasterizeTree({
-            node: this.state.rootNode,
-            firstColumn: this.state.columnDefs[0]
-        }, this.state.subtotalBy.length > 0, true, true);
-
-        var data = [];
-        for (var i = 0; i < dataCopy.length; i++) {
-            //shallow copy each row
-            var row = $.extend({}, dataCopy[i]);
-            if (row.treeNode) {
-                delete row.treeNode
-            }
-            if (row.parent) {
-                delete row.parent;
-            }
-            data.push(row)
-        }
-        return data;
-    },
-    refresh: function () {
-        this.setState({buildRasterizedData: true});
-    },
-    getSubtotals: function () {
-        return this.state.subtotalBy;
-    },
-    getSorts: function () {
-        return this.state.sortBy;
-    },
-    checkAllRows: function (checked) {
-        checkAllChildren(this.state.rootNode, checked);
-        this.setState({});
-    },
-    refreshSubtotalRow: function () {
-        recursivelyAggregateNodes(this.state.rootNode, this.state);
-        this.setState({buildRasterizedData: true});
-    },
     render: function () {
-        //console.time('fresh: ');
+        const rasterizedData = rasterizeTree({
+            node: this.state.rootNode,
+            firstColumn: this.state.columnDefs[0],
+            selectedDetailRows: this.state.selectedDetailRows
+        });
+        // maxRows is referenced later during event handling to determine upperVisualBound
+        this.state.maxRows = rasterizedData.length;
 
-        if (!this.state.rasterizedData || this.state.buildRasterizedData) {
-            rasterizeTreeForRender.call(this);
+        if(this.state.disableInfiniteScrolling === undefined){
+            this.state.disableInfiniteScrolling = this.props.disableInfiniteScrolling;
         }
 
-        const rasterizedData = this.state.rasterizedData;
         // TODO merge lower&upper visual bound into state, refactor getPaginationAttr
         var paginationAttr = getPaginationAttr(this, rasterizedData);
-        var grandTotal = this.state.grandTotal;
-
         var rowsToDisplay = [];
-        if (this.props.disableInfiniteScrolling)
+        if (this.state.disableInfiniteScrolling)
             rowsToDisplay = rasterizedData.slice(paginationAttr.lowerVisualBound, paginationAttr.upperVisualBound + 1).map(rowMapper, this);
         else
             rowsToDisplay = rasterizedData.slice(this.state.lowerVisualBound, this.state.upperVisualBound + 1).map(rowMapper, this);
 
         var headers = buildHeaders(this);
-        this.state.rowNumToDisplay = rowsToDisplay.length;
 
-        var tableBodyContainerStyle = {};
-        if (this.props.height && parseInt(this.props.height) > 0) {
-            tableBodyContainerStyle.height = this.props.height;
-        }
+        var containerStyle = {};
+        if (this.props.height && parseInt(this.props.height) > 0)
+            containerStyle.height = this.props.height;
 
         if (this.props.disableScrolling)
-            tableBodyContainerStyle.overflowY = "hidden";
-
-        //console.timeEnd('fresh: ');
+            containerStyle.overflowY = "hidden";
 
         return (
             React.createElement("div", {id: this.state.uniqueId, className: "rt-table-container"}, 
                 headers, 
-                React.createElement("div", {ref: "scrollBody", style: tableBodyContainerStyle, className: "rt-scrollable", 
-                    onWheel: this.props.enableScrollPage ? scrollPage.bind(this, paginationAttr) : null}, 
-                    React.createElement("table", {ref: "tableBody", className: "rt-table"}, 
+                React.createElement("div", {style: containerStyle, className: "rt-scrollable"}, 
+                    React.createElement("table", {className: "rt-table"}, 
                         React.createElement("tbody", null, 
                         rowsToDisplay
                         )
                     )
                 ), 
-                this.props.disableGrandTotal === true ? null : grandTotal, 
-                buildFooter.call(this, paginationAttr, rasterizedData.length)
+                this.state.disableInfiniteScrolling ? buildFooter(this, paginationAttr) : null
             )
         );
     }
@@ -2212,124 +1446,135 @@ var ReactTable = React.createClass({displayName: "ReactTable",
 var Row = React.createClass({displayName: "Row",
     render: function () {
         const cx = React.addons.classSet;
-        var cells = [];
-        var table = this.props.table;
-        var isGrandTotal = false;
-        if (!this.props.data.isDetail && this.props.data.sectorPath.length == 1 && this.props.data.sectorPath[0] == 'Grand Total') {
-            isGrandTotal = true;
-        }
-
-        for (var i = 0; i < this.props.columnDefs.length; i++) {
+        var cells = [buildFirstCellForRow.call(this)];
+        for (var i = 1; i < this.props.columnDefs.length; i++) {
             var columnDef = this.props.columnDefs[i];
+            var displayInstructions = buildCellLookAndFeel(columnDef, this.props.data);
+            var classes = cx(displayInstructions.classes);
+            // easter egg - if isLoading is set to true on columnDef - spinners will show up instead of blanks or content
+            var displayContent = columnDef.isLoading ?
+                "Loading ... " : displayInstructions.value;
 
-            if (table.props.hideSubtotaledColumns) {
-                var subtotalled = table.state.subtotalBy.some(function (subtotalColumn) {
-                    return subtotalColumn.colTag === columnDef.colTag;
-                });
-                if (subtotalled) {
-                    continue;
-                }
+            // convert and format dates
+            if (columnDef && columnDef.format && columnDef.format.toLowerCase() === "date") {
+                if (typeof displayContent === "number") // if displayContent is a number, we assume displayContent is in milliseconds
+                    displayContent = new Date(displayContent).toLocaleString('en',{timeZone : 'UTC',year: 'numeric', day:'numeric',month:'numeric'});
             }
-
-            if (i === 0 && table.state.subtotalBy.length > 0) {
-                // generate subtotal column
-                cells.push(buildFirstCellForSubtotalRow.call(this, isGrandTotal, !this.props.data.isDetail));
-            } else {
-                var displayInstructions = buildCellLookAndFeel(columnDef, this.props.data);
-                var classes = cx(displayInstructions.classes);
-                // easter egg - if isLoading is set to true on columnDef - spinners will show up instead of blanks or content
-                var displayContent = columnDef.isLoading ? "Loading ... " : displayInstructions.value;
-                // determine cell content, based on whether a cell templating callback was provided
-                if (columnDef.cellTemplate)
-                    displayContent = columnDef.cellTemplate.call(this, this.props.data, columnDef, displayContent);
-                if (isGrandTotal) {
-                    //generate cells in grand total row
-                    var grandTotalCellStyle = {textAlign: displayInstructions.styles.textAlign};
-                    if (displayContent) {
-
-                        grandTotalCellStyle.width = displayContent.length / 2 + 2 + "em";
-                    }
-                    cells.push(
-                        React.createElement("div", {className: classes + " rt-grand-total-cell", key: columnDef.colTag}, 
-                            React.createElement("div", {className: "rt-grand-total-cell-content", style: grandTotalCellStyle}, 
-                                displayContent ? displayContent : React.createElement("span", null, " ")
-                            )
-                        )
-                    );
-                }
-                else {
-                    cells.push(
-                        React.createElement("td", {
-                            className: classes, 
-                            ref: columnDef.colTag, 
-                            onClick: columnDef.onCellSelect ? columnDef.onCellSelect.bind(null, this.props.data[columnDef.colTag], columnDef, i) : null, 
-                            onContextMenu: this.props.cellRightClickMenu ? openCellMenu.bind(this, columnDef) : this.props.onRightClick ? this.props.onRightClick.bind(null, this.props.data, columnDef) : null, 
+            // determine cell content, based on whether a cell templating callback was provided
+            if (columnDef.cellTemplate)
+                displayContent = columnDef.cellTemplate.call(this, this.props.data, columnDef, displayContent);
+            if(this.props.data.isDetail)
+            cells.push(
+                React.createElement("td", {
+                    className: classes, 
+                    onClick: columnDef.onCellSelect ? columnDef.onCellSelect.bind(null, this.props.data[columnDef.colTag], columnDef, i) : null, 
+                    onContextMenu: this.props.onRightClick ? this.props.onRightClick.bind(null, this.props.data, columnDef) : null, 
+                    style: displayInstructions.styles, 
+                    key: columnDef.colTag, 
+                    onDoubleClick: this.props.filtering && this.props.filtering.doubleClickCell ?
+                                   this.props.handleColumnFilter(null, columnDef) : null}, 
+                    this.props.enableEditColumn && (displayContent==='' || displayContent===null || displayContent===undefined) ?
+                        (_.indexOf(_.keys(this.props.dropdownTypeahead),columnDef.colTag) >= 0 ? this.getDropdown(this.props.dropdownTypeahead, columnDef.colTag)
+                        :React.createElement("input", {type: "text", id: columnDef.colTag, defaultValue: displayContent, 
                             style: displayInstructions.styles, 
-                            key: columnDef.colTag, 
-                            //if define doubleClickCallback, invoke this first, otherwise check doubleClickFilter
-                            onDoubleClick: columnDef.onDoubleClick ? columnDef.onDoubleClick.bind(null, this.props.data[columnDef.colTag], columnDef, i, this.props.data) : this.props.filtering && this.props.filtering.doubleClickCell ?
-                                this.props.handleColumnFilter(null, columnDef) : null}, 
-                            displayContent, 
-                            this.props.cellRightClickMenu && this.props.data.isDetail ? buildCellMenu(this.props.cellRightClickMenu, this.props.data, columnDef, this.props.columnDefs) : null
-                        )
-                    );
-                }
+                                placeholder: columnDef.format === 'DATE' ? 'MM/DD/YYYY' : null, 
+                            onBlur: this.saveDataField.bind(this, columnDef,this.props.data, this.props.onCellChangeCallback), 
+                            onKeyPress: this.checkInput.bind(this,columnDef)}))
+                        : displayContent
+                )
+            );
+            else{
+                cells.push(
+                    React.createElement("td", {
+                        className: classes, 
+                        onClick: columnDef.onCellSelect ? columnDef.onCellSelect.bind(null, this.props.data[columnDef.colTag], columnDef, i) : null, 
+                        onContextMenu: this.props.onRightClick ? this.props.onRightClick.bind(null, this.props.data, columnDef) : null, 
+                        style: displayInstructions.styles, 
+                        key: columnDef.colTag, 
+                        onDoubleClick: this.props.filtering && this.props.filtering.doubleClickCell ?
+                            this.props.handleColumnFilter(null, columnDef) : null}, 
+                        displayContent
+                    )
+                );
             }
         }
-
         classes = cx({
             'selected': this.props.isSelected && this.props.data.isDetail,
             'summary-selected': this.props.isSelected && !this.props.data.isDetail,
-            'group-background': !this.props.data.isDetail
+            'highlight-selected': (_.indexOf(this.props.newIssuesRows,this.props.data)!== -1 || _.indexOf(_.pluck(this.props.newIssuesRows, 'cusip'),this.props.data.cusip)!== -1) && this.props.data.isDetail
         });
-
-        if (isGrandTotal) {
-            // add a dummy column to the last to fit the vertical scroll bar
-            cells.push(
-                React.createElement("span", {className: "rt-grand-total-cell"}
-                ));
-
-            return (React.createElement("div", {className: "rt-grand-total"}, 
-                cells
-            ))
-        } else
         // apply extra CSS if specified
-            return (React.createElement("tr", {onClick: this.props.onSelect.bind(null, this.props.data), onMouseDown: mouseDown.bind(this, this.props.data), 
-                onMouseUp: mouseUp.bind(this, this.props.data), 
-                className: classes, style: this.props.extraStyle}, cells));
+        return (React.createElement("tr", {onClick: this.props.onSelect.bind(null, this.props.data), 
+                    className: classes, style: this.props.extraStyle}, cells));
+    },
+
+    onColTagDropdownSelect: function(colTag, event){
+        this.saveDataField(_.filter(this.props.columnDefs, function(column){return column.colTag === colTag})[0], this.props.data, this.props.onCellChangeCallback, event);
+    },
+
+    getDropdown: function(dropdownTypeahead, colTag){
+        var options = [];
+        options.push(React.createElement("option", {value: '', key: 0}));
+        for(var i = 1; i < dropdownTypeahead[colTag].length; i++){
+            options.push(React.createElement("option", {value: dropdownTypeahead[colTag][i], key: i}, dropdownTypeahead[colTag][i]));
+        }
+        return React.createElement("select", {onChange: this.onColTagDropdownSelect.bind(this,colTag)}, options);
+    },
+
+    saveDataField: function(columnDef, row, cellChangeCallback, event){
+        var newCellData = event.target.value;
+        var thisWrapper = this;
+        if(columnDef.format === 'DATE'){
+            if(newCellData!== '' && !/^([0]*[1-9])|([1][0-2])\/([0]*[1-3]|[1,2][0-9])\/\d{4}$/.test(newCellData)){
+                this.getDOMNode().querySelectorAll("#"+columnDef.colTag)[0].style["backgroundColor"] = '#ffb7b7';
+                event.target.value = '';
+                //Callback to save the changed input in original data.
+                cellChangeCallback(columnDef,row, "");
+            }
+            else {
+                this.getDOMNode().querySelectorAll("#"+columnDef.colTag)[0].style["backgroundColor"] = 'white';
+                cellChangeCallback(columnDef,row, newCellData);
+            }
+        }
+        else{
+            //Callback to save the changed input in original data.
+            var returnedCallbackValue = cellChangeCallback(columnDef, row, newCellData);
+            if(returnedCallbackValue && _.isFunction(returnedCallbackValue.then)){
+                returnedCallbackValue.then(function (result) {
+                    thisWrapper.forceUpdate();
+                    adjustHeaders.call(thisWrapper.props.tableState);
+                })
+            }
+        }
+    },
+    checkInput: function (columnDef, event) {
+        if(columnDef.format){
+            switch(columnDef.format){
+                case "number":
+                case "NUMERICAL":
+                    return event.charCode >= 46 && event.charCode <= 57; //also want to include period sign
+                case "CATEGORICAL":
+                    return (event.charCode > 64 && event.charCode < 91) || (event.charCode > 96 && event.charCode < 123);
+                case "DATE":
+                    return event.charCode >= 47 && event.charCode <= 57;
+                default:
+                    return event.charCode;
+            }
+        }
+        else{
+            return event.charCode;
+        }
     }
 });
-
-function mouseDown(row, event) {
-    this.props.table.state.mouseDown = {row: row};
-}
-
-function mouseUp(mouseUpRow, event) {
-    if (mouseUpRow !== this.props.table.state.mouseDown.row) {
-        var mouseDownRow = this.props.table.state.mouseDown.row;
-        this.props.table.state.mouseDown = null;
-        var rowKey = this.props.table.props.rowKey;
-        if (!rowKey || !mouseUpRow[rowKey])
-            return;
-
-        var parent = mouseUpRow.parent;
-        var start = Math.min(mouseDownRow.indexInParent, mouseUpRow.indexInParent);
-        var end = Math.max(mouseDownRow.indexInParent, mouseUpRow.indexInParent);
-        this.props.table.state.selectedDetailRows = {};
-        for (var i = start; i <= end; i++) {
-            var row = parent.ultimateChildren[i];
-            this.props.table.toggleSelectDetailRow(row[rowKey]);
-        }
-
-        this.props.table.setState({});
-    }
-}
 
 var PageNavigator = React.createClass({displayName: "PageNavigator",
     handleClick: function (index, event) {
         event.preventDefault();
         if (index <= this.props.numPages && index >= 1)
             this.props.handleClick(index);
+    },
+    showAllRows: function(){
+        this.props.handleShowAllRows();
     },
     render: function () {
         var self = this;
@@ -2348,17 +1593,19 @@ var PageNavigator = React.createClass({displayName: "PageNavigator",
                 )
             )
         });
-
         return (
             React.createElement("ul", {className: prevClass, className: "pagination pull-right"}, 
+                React.createElement("li", null, 
+                    React.createElement("a", {onClick: this.showAllRows}, "Show All")
+                ), 
                 React.createElement("li", {className: nextClass}, 
                     React.createElement("a", {className: prevClass, 
-                        onClick: this.props.handleClick.bind(null, this.props.activeItem - 1)}, "«")
+                       onClick: this.props.handleClick.bind(null, this.props.activeItem - 1)}, "«")
                 ), 
                 items, 
                 React.createElement("li", {className: nextClass}, 
                     React.createElement("a", {className: nextClass, 
-                        onClick: this.props.handleClick.bind(null, this.props.activeItem + 1)}, "»")
+                       onClick: this.props.handleClick.bind(null, this.props.activeItem + 1)}, "»")
                 )
             )
         );
@@ -2375,8 +1622,9 @@ var SubtotalControl = React.createClass({displayName: "SubtotalControl",
         this.setState({userInputBuckets: event.target.value});
     },
     handleKeyPress: function (event) {
-        if (event.charCode == 13) {
+        if (event.keyCode == 13) {
             event.preventDefault();
+            event.stopPropagation();
             this.props.table.handleSubtotalBy(this.props.columnDef, this.state.userInputBuckets);
         }
     },
@@ -2387,142 +1635,27 @@ var SubtotalControl = React.createClass({displayName: "SubtotalControl",
     },
     render: function () {
         var table = this.props.table, columnDef = this.props.columnDef;
-        var subMenuAttachment = null;
-        if (columnDef.format == "number" || columnDef.format == "currency") {
-            subMenuAttachment =
+        var subMenuAttachment = columnDef.format == "number" || columnDef.format == "currency" ?
+            (
                 React.createElement("div", {className: "menu-item-input", style: {"position": "absolute", "top": "-50%", "right": "100%"}}, 
                     React.createElement("label", {style: {"display": "block"}}, "Enter Bucket(s)"), 
-                    React.createElement("input", {tabIndex: "1", onKeyPress: this.handleKeyPress, onChange: this.handleChange, 
-                        placeholder: "ex: 1,10,15"}), 
+                    React.createElement("input", {tabIndex: "1", onKeyDown: this.handleKeyPress, onChange: this.handleChange, 
+                           placeholder: "ex: 1,10,15"}), 
                     React.createElement("a", {tabIndex: "2", style: {"display": "block"}, 
-                        onClick: table.handleSubtotalBy.bind(null, columnDef, this.state.userInputBuckets), 
-                        className: "btn-link"}, "Ok")
+                       onClick: table.handleSubtotalBy.bind(null, columnDef, this.state.userInputBuckets), 
+                       className: "btn-link"}, "Ok")
                 )
-
-
-        }
-
-        if (columnDef.format == DATE_FORMAT && columnDef.formatInstructions != null) {
-            subMenuAttachment =
-                React.createElement("div", {className: "menu-item-input", style: {"position": "absolute", "top": "-50%", "right": "100%"}}, 
-                    React.createElement("label", {style: {"display": "block"}}, "Enter Bucket(s)"), 
-                    React.createElement("input", {tabIndex: "1", onKeyPress: this.handleKeyPress, onChange: this.handleChange, 
-                        placeholder: "ex: 1/8/2013, 5/12/2014, 3/10/2015"}), 
-                    React.createElement("a", {tabIndex: "2", style: {"display": "block"}, 
-                        onClick: table.handleSubtotalBy.bind(null, columnDef, this.state.userInputBuckets), 
-                        className: "btn-link"}, "Ok")
-                )
-
-        }
-
+            ) : null;
         return (
             React.createElement("div", {
                 onClick: subMenuAttachment == null ? table.handleSubtotalBy.bind(null, columnDef, null) : this.handleClick, 
                 style: {"position": "relative"}, className: "menu-item menu-item-hoverable"}, 
-                React.createElement("div", null, 
-                    React.createElement("span", null, 
-                        React.createElement("i", {className: "fa fa-plus"}), 
-                    " Add Subtotal")
-                ), 
+                React.createElement("div", null, React.createElement("i", {className: "fa fa-plus"}), " Add Subtotal"), 
                 subMenuAttachment
             )
         );
     }
 });
-
-
-//Subtotal logic for dates
-
-var SubtotalControlForDates = React.createClass({
-    displayName: "SubtotalControlForDates",
-    getInitialState: function () {
-        return {
-            userInputBuckets: ""
-        }
-    },
-    handleChange: function (event) {
-        this.setState({userInputBuckets: event.target.value});
-    },
-    handleKeyPress: function (event) {
-        if (event.charCode == 13) {
-            event.preventDefault();
-            this.props.table.handleSubtotalBy(this.props.columnDef, this.state.userInputBuckets);
-        }
-    },
-    handleClick: function (event) {
-        event.stopPropagation();
-        var $node = $(this.getDOMNode());
-        $node.children(".menu-item-input").children("input").focus();
-    },
-    render: function () {
-        var table = this.props.table, columnDef = this.props.columnDef;
-        var subMenuAttachment = null;
-        var freq = this.props.freq;
-        if (freq == WEEKLY) {
-            return React.createElement("div", {
-                    onClick: subMenuAttachment == null ? table.handleSubtotalBy.bind(null, columnDef, WEEKLY) : this.handleClick,
-                    style: {"position": "relative"}, className: "menu-item menu-item-hoverable"
-                },
-                React.createElement("div", null,
-                    React.createElement("span", null,
-                        WEEKLY)
-                ),
-                subMenuAttachment
-            );
-        }
-        if (freq == MONTHLY) {
-            return React.createElement("div", {
-                    onClick: subMenuAttachment == null ? table.handleSubtotalBy.bind(null, columnDef, MONTHLY) : this.handleClick,
-                    style: {"position": "relative"}, className: "menu-item menu-item-hoverable"
-                },
-                React.createElement("div", null,
-                    React.createElement("span", null,
-                        MONTHLY)
-                ),
-                subMenuAttachment
-            );
-        }
-
-        if (freq == DAILY) {
-            return React.createElement("div", {
-                    onClick: subMenuAttachment == null ? table.handleSubtotalBy.bind(null, columnDef, DAILY) : this.handleClick,
-                    style: {"position": "relative"}, className: "menu-item menu-item-hoverable"
-                },
-                React.createElement("div", null,
-                    React.createElement("span", null,
-                        DAILY)
-                ),
-                subMenuAttachment
-            );
-        }
-
-        if (freq == QUARTERLY) {
-            return React.createElement("div", {
-                    onClick: subMenuAttachment == null ? table.handleSubtotalBy.bind(null, columnDef, QUARTERLY) : this.handleClick,
-                    style: {"position": "relative"}, className: "menu-item menu-item-hoverable"
-                },
-                React.createElement("div", null,
-                    React.createElement("span", null,
-                        QUARTERLY)
-                ),
-                subMenuAttachment
-            );
-        }
-
-        if (freq == YEARLY) {
-            return React.createElement("div", {
-                    onClick: subMenuAttachment == null ? table.handleSubtotalBy.bind(null, columnDef, YEARLY) : this.handleClick,
-                    style: {"position": "relative"}, className: "menu-item menu-item-hoverable"
-                },
-                React.createElement("div", null,
-                    React.createElement("span", null,
-                        YEARLY)
-                ),
-                subMenuAttachment
-            );
-        }
-    }
-})
 
 /*
  * ----------------------------------------------------------------------
@@ -2553,6 +1686,7 @@ function rowMapper(row) {
     var rowKey = this.props.rowKey;
     var generatedKey = generateRowKey(row, rowKey);
     return (React.createElement(Row, {
+        tableState: this, 
         key: generatedKey, 
         data: row, 
         extraStyle: resolveExtraStyles(generatedKey, this.props.extraStyle), 
@@ -2562,14 +1696,16 @@ function rowMapper(row) {
         toggleHide: this.handleToggleHide, 
         columnDefs: this.state.columnDefs, 
         filtering: this.props.filtering, 
-        handleColumnFilter: this.handleColumnFilter.bind, 
-        cellRightClickMenu: this.props.cellRightClickMenu, 
-        table: this}
-    ));
+        onCellChangeCallback: this.props.onCellChangeCallback, 
+        enableEditColumn: this.props.enableEditColumn, 
+        dropdownTypeahead: this.props.dropdownTypeahead, 
+        newIssuesRows: this.props.newIssuesRows, 
+        handleColumnFilter: this.handleColumnFilter.bind}
+        ));
 }
 
 function docClick(e) {
-    //adjustHeaders.call(this);
+    adjustHeaders.call(this);
     // Remove filter-in-place boxes if they are open and they weren't clicked on
     if (!jQuery.isEmptyObject(this.state.filterInPlace)) {
         if (!($(e.target).hasClass("rt-headers-container") || $(e.target).parents(".rt-headers-container").length > 0)) {
@@ -2581,60 +1717,36 @@ function docClick(e) {
 }
 
 function adjustHeaders(adjustCount) {
-    if (this.state.rowNumToDisplay == 0) {
-        //if table has no data, don't change column width
-        return;
-    }
-
     var id = this.state.uniqueId;
     if (!(adjustCount >= 0))
         adjustCount = 0;
     var counter = 0;
     var headerElems = $("#" + id + " .rt-headers-container");
-    var headerContainerWidth = $("#" + id + ' .rt-headers-grand-container').width();
     var padding = parseInt(headerElems.first().find(".rt-header-element").css("padding-left"));
     padding += parseInt(headerElems.first().find(".rt-header-element").css("padding-right"));
-
-    var grandTotalFooter = $('#' + id + ' .rt-grand-total');
-    grandTotalFooter.width(headerContainerWidth);
-    var grandTotalFooterCells = grandTotalFooter.find('.rt-grand-total-cell');
-    var grandTotalFooterCellContents = grandTotalFooter.find('.rt-grand-total-cell-content');
     var adjustedSomething = false;
 
-    var table = this;
     headerElems.each(function () {
         var currentHeader = $(this);
-        var headerTextWidthWithPadding = currentHeader.find(".rt-header-anchor-text").width() + padding;
-        var footerCellContentWidth = $(grandTotalFooterCellContents[counter]).width() + 10; // 10 is padding
-        headerTextWidthWithPadding = footerCellContentWidth > headerTextWidthWithPadding ? footerCellContentWidth : headerTextWidthWithPadding;
-
-        if (currentHeader.width() > 0 && headerTextWidthWithPadding > currentHeader.width() + 1) {
-            currentHeader.css("width", headerTextWidthWithPadding + "px");
-            $("#" + id).find("tr:eq(0)").find("td:eq(" + counter + ")").css("min-width", (headerTextWidthWithPadding) + "px");
-            if (counter != (grandTotalFooterCells.length - 1)) {
-                $(grandTotalFooterCells[counter]).css("width", (headerTextWidthWithPadding) + "px");
-            }
-            adjustedSomething = true;
-        }
-
-        var width = $('#' + id + ' .rt-table tr:first td:eq(' + counter + ')').outerWidth() - 1;
+        var width = $('#' + id + ' .rt-table tr:last td:eq(' + counter + ')').outerWidth() - 1;
         if (counter == 0 && parseInt(headerElems.first().css("border-right")) == 1) {
             width += 1;
         }
+        var headerTextWidthWithPadding = currentHeader.find(".rt-header-anchor-text").width() + padding;
+        if (currentHeader.width() > 0 && headerTextWidthWithPadding > currentHeader.width() + 1) {
+            currentHeader.css("width", headerTextWidthWithPadding + "px");
+            $("#" + id).find("tr").find("td:eq(" + counter + ")").css("min-width", (headerTextWidthWithPadding) + "px");
+            adjustedSomething = true;
+        }
         if (width !== currentHeader.width()) {
             currentHeader.width(width);
-            $(grandTotalFooterCells[counter]).width(width);
             adjustedSomething = true;
         }
         counter++;
     });
 
-    if (!adjustedSomething) {
-        grandTotalFooterCellContents.each(function (index, cell) {
-            $(cell).css('width', 'inherit');
-        });
+    if (!adjustedSomething)
         return;
-    }
 
     // Realign sorting carets
     var downs = headerElems.find(".rt-downward-caret").removeClass("rt-downward-caret");
@@ -2674,9 +1786,6 @@ function uniqueId(prefix) {
  */
 
 function isRowSelected(row, rowKey, selectedDetailRows, selectedSummaryRows) {
-    if (row.isChecked) {
-        return true;
-    }
     if (rowKey == null)
         return;
     return selectedDetailRows[row[rowKey]] != null || (!row.isDetail && selectedSummaryRows[generateSectorKey(row.sectorPath)] != null);
@@ -2688,12 +1797,18 @@ function resolveExtraStyles(generatedKey, extraStyles) {
 
 function getPaginationAttr(table, data) {
     var result = {};
+    if(table.state.disablePagination === undefined){
+        table.state.disablePagination = table.props.disablePagination;
+    }
+    if(table.state.pageSize === undefined){
+        table.state.pageSize = table.props.pageSize;
+    }
 
-    if (table.props.disablePagination) {
+    if (table.state.disablePagination) {
         result.lowerVisualBound = 0;
         result.upperVisualBound = data.length
     } else {
-        result.pageSize = (table.props.pageSize || 50);
+        result.pageSize = table.state.pageSize || 50;
         result.maxDisplayedPages = table.props.maxDisplayedPages || 10;
 
         result.pageStart = 1;
@@ -2709,12 +1824,6 @@ function getPaginationAttr(table, data) {
         result.lowerVisualBound = (table.state.currentPage - 1) * result.pageSize;
         result.upperVisualBound = Math.min(table.state.currentPage * result.pageSize - 1, data.length);
 
-        if (result.lowerVisualBound > result.upperVisualBound) {
-            // after filter, data length has reduced. if lowerVisualBound is larger than the upperVisualBound, go to first page
-            table.state.currentPage = 1;
-            result.lowerVisualBound = 0;
-            result.upperVisualBound = Math.min(result.pageSize - 1, data.length);
-        }
     }
 
     return result;
@@ -2730,178 +1839,6 @@ function computePageDisplayRange(currentPage, maxDisplayedPages) {
     return {
         start: currentPage - leftAllocation - 1,
         end: currentPage + rightAllocation - 1
-    }
-}
-
-function buildFilterData(isUpdate) {
-    setTimeout(function () {
-        if (isUpdate) {
-            this.state.filterDataCount = {};
-            this.state.filterData = {};
-        }
-        for (var i = 0; i < this.props.data.length; i++) {
-            buildFilterDataHelper(this.props.data[i], this.state, this.props);
-        }
-        convertFilterData(this.state.filterDataCount, this.state);
-        if (isUpdate) {
-            this.props.buildFiltersCallback && this.props.buildFiltersCallback(this.state.filterDataCount);
-        }
-    }.bind(this));
-}
-
-/**
- * generate distinct values for each column
- * @param row
- * @param state
- * @param props
- */
-function buildFilterDataHelper(row, state, props) {
-    if (row.hiddenByFilter == true) {
-        return;
-    }
-
-    if (!state.filterDataCount) {
-        state.filterDataCount = {};
-    }
-
-    var columnDefs = state.columnDefs;
-    for (var i = 0; i < columnDefs.length; i++) {
-        if (columnDefs[i].format == 'number' || columnDefs[i].colTag == props.rowKey) {
-            continue;
-        }
-
-        var key = columnDefs[i].colTag;
-        if (row[key]) {
-            var hashmap = state.filterDataCount[key] || {};
-            hashmap[row[key]] = typeof hashmap[row[key]] === 'undefined' ? 1 : hashmap[row[key]] + 1;
-            state.filterDataCount[key] = hashmap;
-        }
-    }
-}
-
-/**
- * convert distinct values in map into an array
- * @param filterData
- */
-function convertFilterData(filterDataCount, state) {
-    state.filterData = {};
-    for (var key in filterDataCount) {
-        var map = filterDataCount[key];
-        var arr = [];
-        for (var value in map) {
-            if (value != "") {
-                arr.push(value);
-            }
-        }
-        state.filterData[key] = arr;
-    }
-}
-
-function openCellMenu(columnDef, event) {
-    event.preventDefault();
-    var $cell = $(this.refs[columnDef.colTag].getDOMNode());
-    var cellPosition = $cell.position();
-    var $menu = $cell.find('.rt-cell-menu');
-    if (cellPosition.left !== 0) {
-        $menu.css("left", cellPosition.left + "px");
-    }
-    if (cellPosition.right !== 0) {
-        $menu.css("right", cellPosition.right + "px");
-    }
-    $menu.css('display', 'block');
-
-    $cell.hover(null, function hoveroutCell() {
-        $menu.css('display', 'none');
-    });
-
-    $menu.hover(null, function hoveroutMenu() {
-        $menu.css('display', 'none');
-    });
-}
-
-function buildCellMenu(cellMenu, rowData, currentColumnDef, columnDefs) {
-    if (!rowData[currentColumnDef.colTag]) {
-        return null;
-    }
-
-    var menuItems = [];
-    var menuStyle = {};
-
-    if (cellMenu.style && cellMenu.style.textAlign === 'right') {
-        menuStyle.right = "0%";
-    }
-    else {
-        menuStyle.left = "0%";
-    }
-
-    if (currentColumnDef.rightClickMenuItems) {
-        currentColumnDef.rightClickMenuItems.menus.forEach(function (menu) {
-            menuItems.push(React.createElement("div", {className: "menu-item", onClick: menu.callback.bind(null, rowData, currentColumnDef, columnDefs)}, menu.description));
-            if (menu.followingSeparator) {
-                menuItems.push(React.createElement("div", {className: "separator"}));
-            }
-        });
-    }
-    else {
-        cellMenu.menus.forEach(function (menu) {
-            menuItems.push(React.createElement("div", {className: "menu-item", onClick: menu.callback.bind(null, rowData, currentColumnDef, columnDefs)}, menu.description));
-            if (menu.followingSeparator) {
-                menuItems.push(React.createElement("div", {className: "separator"}));
-            }
-        });
-    }
-
-
-    return (
-        React.createElement("div", {style: menuStyle, className: "rt-cell-menu"}, 
-            menuItems
-        )
-    )
-}
-
-/**
- * in pagination mode, scroll wheel to change page.
- * @param paginationAttr
- * @param event
- */
-function scrollPage(paginationAttr, event) {
-    event.stopPropagation();
-    var $scrollBody = $(this.refs.scrollBody.getDOMNode());
-    var $tableBody = $(this.refs.tableBody.getDOMNode());
-    var scrollTop = $scrollBody.scrollTop();
-    var scrollBodyheight = $scrollBody.height();
-    var tableHeight = $tableBody.height();
-    var scrollDown = event.deltaY > 0;
-
-    if (scrollTop + scrollBodyheight >= tableHeight && scrollDown || scrollTop === 0 && !scrollDown) {
-        // when scroll to bottom or top of table, prevent scroll whole document.
-        // when at the first page and scroll up, or at the last page and srocll down, scroll the whole document
-        if (!((this.state.currentPage == 1 && !scrollDown) || (this.state.currentPage == paginationAttr.pageEnd && scrollDown))) {
-            event.preventDefault();
-        }
-    }
-
-    if (scrollTop + scrollBodyheight >= tableHeight && this.state.lastScrollTop === scrollTop && scrollDown) {
-        var nextPage = this.state.currentPage + 1;
-    } else if (scrollTop === 0 && this.state.lastScrollTop === 0 && !scrollDown) {
-        nextPage = this.state.currentPage - 1;
-    }
-
-    if (nextPage > 0 && nextPage <= paginationAttr.pageEnd) {
-        this.setState({
-            currentPage: nextPage,
-            lastScrollTop: scrollTop
-        });
-        setTimeout(function () {
-            if (scrollDown) {
-                $scrollBody.scrollTop(0);
-            }
-            else {
-                $scrollBody.scrollTop(tableHeight - scrollBodyheight);
-            }
-        });
-    } else {
-        this.state.lastScrollTop = scrollTop;
     }
 }
 ;/**
@@ -3077,6 +2014,19 @@ function ReactTableHandleSelect(selectedRow, event) {
             }
         }
     }
+}
+
+function ReactTableHandleUnselectAll(){
+    this.props.onUnselectAllCallback(this.clearAllRowSelections());
+}
+
+function ReactTableHandleShowSelected() {
+
+    var newState = this.state;
+    if (this.state.sortBy.length > 0 && _.keys(this.state.selectedDetailRows).length > 0)
+        newState.rootNode.sortSelectedUnSelectedNodes(this.state.selectedDetailRows,
+            convertSortByToFuncs(this.state.columnDefs, this.state.sortBy));
+    this.setState(newState);
 }
 
 function ReactTableHandleColumnFilter(columnDefToFilterBy, e, dontSet) {
@@ -3289,6 +2239,7 @@ function hideTreeNodeWhenNoChildrenToShow(lrootNode) {
 };
 
 function ReactTableHandleSubtotalBy(columnDef, partitions, event) {
+    if(event)
     event.stopPropagation();
     const subtotalBy = this.state.subtotalBy || [];
     this.state.scrollToLeft = true;
@@ -3425,6 +2376,16 @@ function ReactTableHandlePageClick(page) {
 
 }
 
+function ReactTableHandleShowAllRows(){
+    $(this.getDOMNode()).find(".rt-scrollable").get(0).addEventListener('scroll', this.handleScroll);
+    this.setState({
+        disableInfiniteScrolling: false,
+        disablePagination: true,
+        pageSize: 50,
+        upperVisualBound: 50
+    });
+}
+
 /*
  * ----------------------------------------------------------------------
  * Helpers
@@ -3432,11 +2393,11 @@ function ReactTableHandlePageClick(page) {
  */
 function partitionNumberLine(partitions) {
     var i, stringBuckets, floatBuckets = [];
-    stringBuckets = partitions.split(",");
+    stringBuckets = partitions.replace(/m/g,"000").split(",");
     for (i = 0; i < stringBuckets.length; i++) {
         var floatBucket = parseFloat(stringBuckets[i]);
         if (!isNaN(floatBucket))
-            floatBuckets.push(floatBucket);
+            floatBuckets.push(floatBucket/1000);
         floatBuckets.sort(function (a, b) {
             return a - b;
         });
@@ -3542,13 +2503,10 @@ function getInitialSelections(selectedRows, selectedSummaryRows) {
 
 const dateSorter = {
     asc: function (a, b) {
-        var aDate = !a[this.colTag] ? 0 : a[this.colTag];
-        var bDate = !b[this.colTag] ? 0 : b[this.colTag];
-
-        return new Date(aDate) - new Date(bDate);
+        return new Date(a[this.colTag]) - new Date(b[this.colTag]);
     },
     desc: function (a, b) {
-        return -1 * dateSorter.asc.call(this, a, b);
+        return new Date(b[this.colTag]) - new Date(a[this.colTag]); //-1 * dateSorter.asc.call(null, a, b);
     }
 };
 
@@ -3560,26 +2518,15 @@ const dateSorter = {
  * @param sortType 'asc' or 'desc'
  * @returns {function}
  */
-function getSortFunction(columnDef, sortType, subtotalColumnDef) {
+function getSortFunction(columnDef, sortType) {
     const format = columnDef.format || "";
-    var sorter = null;
-    if (subtotalColumnDef) {
-        sorter = lexicalSorter[sortType].bind(subtotalColumnDef);
-        // if the user provided a custom sort function for the column, use that instead
-        if (columnDef.sort && columnDef[sortType])
-            sorter = columnDef.sort[sortType].bind(subtotalColumnDef);
-        else if (format === "date")
-            sorter = dateSorter[sortType].bind(subtotalColumnDef);
-        return sorter;
-    } else {
-        sorter = lexicalSorter[sortType].bind(columnDef);
-        // if the user provided a custom sort function for the column, use that instead
-        if (columnDef.sort && columnDef[sortType])
-            sorter = columnDef.sort[sortType].bind(columnDef);
-        else if (format === "date")
-            sorter = dateSorter[sortType].bind(columnDef);
-        return sorter;
-    }
+    var sorter = lexicalSorter[sortType].bind(columnDef);
+    // if the user provided a custom sort function for the column, use that instead
+    if (columnDef.sort && columnDef[sortType])
+        sorter = columnDef.sort[sortType].bind(columnDef);
+    else if (format === "date" || format === "DATE")
+        sorter = dateSorter[sortType].bind(columnDef);
+    return sorter;
 }
 
 /**
@@ -4011,6 +2958,29 @@ TreeNode.prototype.sortNodes = function (sortFuncs) {
     else
         this.ultimateChildren.sort(buildCompositeSorter(sortFuncs, false));
 };
+
+TreeNode.prototype.sortSelectedUnSelectedNodes = function (selectedRows, sortFuncs) {
+    if (this.hasChild()) {
+        this.children.sort(buildCompositeSorter(sortFuncs, true));
+        $.each(this.children, function (idx, child) {
+            child.sortNodes(sortFuncs);
+        });
+    }
+    else{
+        // segregate selected and unselected children from ultimateChildren
+        var selectedChildren = _.filter(this.ultimateChildren, function (datum) {
+            return selectedRows.hasOwnProperty(datum.cusip);
+        });
+        selectedChildren.sort(buildCompositeSorter(sortFuncs, false));
+        var unselectedChildren = _.difference(this.ultimateChildren, selectedChildren);
+        unselectedChildren.sort(buildCompositeSorter(sortFuncs, false));
+        this.ultimateChildren = selectedChildren.concat(unselectedChildren);
+    }
+
+
+};
+
+
 
 TreeNode.prototype.filterByColumn = function (columnDef, textToFilterBy, caseSensitive, customFilterer) {
     if (columnDef.format === "number")

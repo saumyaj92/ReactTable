@@ -21,7 +21,7 @@ function exportToExcel(data, filename, table){
         $.each(value, function(j, value2) {
             if(table.state.columnDefs[j] && table.state.columnDefs[j].format && table.state.columnDefs[j].format.toLowerCase() === "date" ){
                 if (typeof value2 === "number") // if displayContent is a number, we assume displayContent is in milliseconds
-                    value2 = new Date(value2).toLocaleDateString();
+                    value2 = new Date(value2).toLocaleString('en',{timeZone : 'UTC',year: 'numeric', day:'numeric',month:'numeric'});
 
             }
             excel += "<td>"+parseString(value2)+"</td>";
@@ -77,56 +77,29 @@ function exportToExcel(data, filename, table){
         tempFrame.remove();
     }
     else{          //other browsers
-        var uri = 'data:application/vnd.ms-excel;base64,',
-            template = excelFile,
-            base64 = function(s) {
-                return window.btoa(unescape(encodeURIComponent(s)));
-            },
-            format = function(s, c) {
-                return s.replace(/{(\w+)}/g, function(m, p) {
-                    return c[p];
-                });
-            };
-        // get the table data
-        var table = excel;
-        var ctx = {
-            worksheet: filename,
-            table: table
-        };
-        var blobUrl = uri + base64(format(template, ctx));
-        // var base64data = $.base64.encode(excelFile);
-        // var blob = b64toBlob(base64data, "application/vnd.ms-excel");
-        // var blobUrl = URL.createObjectURL(blob);
-        $("<a></a>").attr("download", filename+'.xls')
-            .attr("href", blobUrl)
-            .append("<div id='download-me-now'></div>")
-            .appendTo("body");
-        $("#download-me-now").click().remove();
+        // var uri = 'data:application/vnd.ms-excel;base64,',
+        //     template = excelFile,
+        //     base64 = function(s) {
+        //         return window.btoa(unescape(encodeURIComponent(s)));
+        //     },
+        //     format = function(s, c) {
+        //         return s.replace(/{(\w+)}/g, function(m, p) {
+        //             return c[p];
+        //         });
+        //     };
+        // var table = excel;
+        // var ctx = {
+        //     worksheet: filename,
+        //     table: table
+        // };
+        var blobUrl = new Blob([excelFile], {type: 'data:application/vnd.ms-excel;charset=utf-8'});
+        saveAs(blobUrl,filename+'.xls');
+        // $("<a></a>").attr("download", filename+'.xls')
+        //     .attr("href", blobUrl)
+        //     .append("<div id='download-me-now'></div>")
+        //     .appendTo("body");
+        // $("#download-me-now").click().remove();
     }
-}
-
-function b64toBlob(b64Data, contentType, sliceSize) {
-    contentType = contentType || '';
-    sliceSize = sliceSize || 512;
-
-    var byteCharacters = atob(b64Data);
-    var byteArrays = [];
-
-    for (var offset = 0; offset < byteCharacters.length; offset += sliceSize) {
-        var slice = byteCharacters.slice(offset, offset + sliceSize);
-
-        var byteNumbers = new Array(slice.length);
-        for (var i = 0; i < slice.length; i++) {
-            byteNumbers[i] = slice.charCodeAt(i);
-        }
-
-        var byteArray = new Uint8Array(byteNumbers);
-
-        byteArrays.push(byteArray);
-    }
-
-    var blob = new Blob(byteArrays, {type: contentType});
-    return blob;
 }
 
 function exportToPDF(data, filename, table){
@@ -204,7 +177,7 @@ function exportToPDF(data, filename, table){
             }, startColPosition);
             if( table.state.columnDefs[index].format && table.state.columnDefs[index].format.toLowerCase() === "date" ){
                 if (typeof value2 === "number") // if displayContent is a number, we assume displayContent is in milliseconds
-                    value2 = new Date(value2).toLocaleDateString();
+                    value2 = new Date(value2).toLocaleString('en',{timeZone : 'UTC',year: 'numeric', day:'numeric',month:'numeric'});
 
             }
             doc.text(colPosition,rowPosition, parseString(value2, true));
