@@ -1,14 +1,24 @@
+//Contants used for date subtotalling
+const WEEKLY = "Weekly";
+const MONTHLY = "Monthly";
+const QUARTERLY = "Quarterly";
+const YEARLY = "Yearly";
+const DAILY = "Daily";
+const DATE_FORMAT = "date";
+const OLDEST = "Oldest";
+
 /**
  * find the right sector name for the current row for the given level of row grouping
  * this method can take partition subtotalBy columns that are numeric in nature and partition rows based on where they fall
  * in the partition
  * @param subtotalBy the column to group subtotalBy
  * @param row the data row to determine the sector name for
+ * @param partitions the criteria for creating partitions for date columns
  */
-function getSectorName(row, subtotalBy) {
+function classifyRow(row, subtotalBy, partitions) {
     var sectorName = "", sortIndex = null;
-    if (subtotalBy.format == "number" || subtotalBy.format == "currency") {
-        var result = resolvePartitionName(subtotalBy, row);
+    if (subtotalBy.format == "number" || subtotalBy.format == "currency" || (subtotalBy.format == "date" && subtotalBy.formatInstructions != null)) {
+        var result = resolvePartitionName(subtotalBy, row, partitions);
         sectorName = result.sectorName;
         sortIndex = result.sortIndex;
     } else
@@ -18,8 +28,8 @@ function getSectorName(row, subtotalBy) {
 
 function aggregateSector(partitionResult, columnDefs, subtotalBy) {
     var result = {};
-    for (var i = 1; i < columnDefs.length; i++)
-        result[columnDefs[i].colTag] = aggregateColumn(partitionResult, columnDefs[i], subtotalBy);
+    for (var i = 0; i < columnDefs.length; i++)
+        result[columnDefs[i].colTag] = aggregateColumn(partitionResult, columnDefs[i], subtotalBy, columnDefs);
     return result;
 }
 
@@ -29,23 +39,70 @@ function aggregateSector(partitionResult, columnDefs, subtotalBy) {
  * ----------------------------------------------------------------------
  */
 
-function resolvePartitionName(subtotalBy, row) {
+function resolvePartitionName(subtotalBy, row, partitions) {
     var sectorName = "", sortIndex = "";
-    if (subtotalBy.subtotalByRange && row[subtotalBy.colTag]) {
-        for (var i = 0; i < subtotalBy.subtotalByRange.length; i++) {
-            if (row[subtotalBy.colTag] < subtotalBy.subtotalByRange[i]) {
-                sectorName = subtotalBy.text + " " + (i != 0 ? (subtotalBy.subtotalByRange[i - 1] * 1000) : 0) + " - " + (subtotalBy.subtotalByRange[i] * 1000);
-                sortIndex = i;
-                break;
+
+    if (subtotalBy.subtotalByRange) {
+        if (row[subtotalBy.colTag] != null) {
+            for (var i = 0; i < subtotalBy.subtotalByRange.length; i++) {
+                if (row[subtotalBy.colTag] < subtotalBy.subtotalByRange[i]) {
+                    if (subtotalBy.format == DATE_FORMAT && subtotalBy.formatInstructions != null) {
+                        var dateStr1 = moment(subtotalBy.subtotalByRange[i - 1]).format(subtotalBy.formatInstructions);
+                        var dateStr2 = moment(subtotalBy.subtotalByRange[i]).add(-1, "days").format(subtotalBy.formatInstructions);
+                        if (partitions == YEARLY) {
+                            //dateStr1 = new Date(row[subtotalBy.colTag]).getFullYear();
+                            //sectorName = subtotalBy.text + " " + dateStr1;
+                            sectorName = new Date(row[subtotalBy.colTag]).getFullYear();
+                        }
+                        else if (partitions == DAILY) {
+                            sectorName = dateStr1;
+                        }
+                        else if (partitions == MONTHLY) {
+                            sectorName = moment(subtotalBy.subtotalByRange[i - 1]).format("MMM YYYY");
+                        }
+                        else {
+                            sectorName = dateStr1 + " - " + dateStr2;
+                        }
+                    }
+                    else {
+                        sectorName = (i != 0 ? subtotalBy.subtotalByRange[i - 1] : 0) + " - " + subtotalBy.subtotalByRange[i];
+                    }
+                    sortIndex = i;
+                    break;
+                }
+            }
+            if (!sectorName) {
+                if (subtotalBy.format == DATE_FORMAT && subtotalBy.formatInstructions != null) {
+                    var date = new Date(subtotalBy.subtotalByRange[subtotalBy.subtotalByRange.length - 1]);
+                    var dateStr = moment(date).format(subtotalBy.formatInstructions);
+                    if (partitions == YEARLY) {
+                        dateStr = new Date(dateStr).getFullYear();
+                    }
+                    else if (partitions == MONTHLY) {
+                        dateStr = moment(date).format("MMM YYYY");
+                    }
+                    else if (partitions == DAILY) {
+                        dateStr = moment(date).format("YYYY/MM/DD");
+                    }
+                    sectorName = dateStr + "+";
+                }
+                else {
+                    sectorName = subtotalBy.subtotalByRange[subtotalBy.subtotalByRange.length - 1] + "+";
+                }
+                sortIndex = i + 1;
             }
         }
-        if (!sectorName) {
-            sectorName = subtotalBy.text + " " + (subtotalBy.subtotalByRange[subtotalBy.subtotalByRange.length - 1] * 1000) + "+";
-            sortIndex = i + 1;
+    }
+    else {
+        if (subtotalBy.format == DATE_FORMAT && subtotalBy.formatInstructions != null) {
+            sectorName = moment(row[subtotalBy.colTag]).format(subtotalBy.formatInstructions);
+        } else {
+            sectorName = row[subtotalBy.colTag];
+        }
+        if (subtotalBy.format == DATE_FORMAT && subtotalBy.format == "number") {
+            sortIndex = row[subtotalBy.colTag];
         }
     }
-    else
-        sectorName = subtotalBy.text;
     return {sectorName: sectorName, sortIndex: sortIndex};
 }
 
@@ -75,10 +132,21 @@ function resolveAggregationMethod(columnDef, subtotalBy) {
     return result;
 }
 
-function aggregateColumn(partitionResult, columnDef, subtotalBy) {
+function removeFilteredRow(rows) {
+    var ret = [];
+    rows.forEach(function (row) {
+        if (!row.hiddenByFilter) {
+            ret.push(row);
+        }
+    });
+    return ret;
+}
+
+function aggregateColumn(partitionResult, columnDef, subtotalBy, columnDefs) {
     var result;
     var aggregationMethod = resolveAggregationMethod(columnDef, subtotalBy);
 
+    partitionResult = removeFilteredRow(partitionResult);
     // call custom aggregation function or use one of the stock aggregation functions
     if (typeof aggregationMethod === 'function')
         result = aggregationMethod({data: partitionResult, columnDef: columnDef});
@@ -102,11 +170,24 @@ function aggregateColumn(partitionResult, columnDef, subtotalBy) {
             case "most_data_points":
                 result = _mostDataPoints({data: partitionResult, columnDef: columnDef});
                 break;
+            case "weighted_average":
+                result = _weightedAverage({data: partitionResult, columnDef: columnDef});
+                break;
+            case "non_zero_weighted_average":
+                result = _nonZeroweightedAverage({data: partitionResult, columnDef: columnDef});
+                break;
+            case "distinct_sum":
+                result = _distinctSum({data: partitionResult, columnDef: columnDef});
+                break;
+            case "percentage_contribution":
+                result = _percentageContribution({data: partitionResult, columnDef: columnDef, columnDefs: columnDefs});
+                break;
             default :
                 result = "";
         }
     return result;
 }
+
 
 function _straightSumAggregation(options) {
     var data = options.data, columnDef = options.columnDef, result = 0, temp = 0;
@@ -117,10 +198,7 @@ function _straightSumAggregation(options) {
     return result;
 }
 function _average(options) {
-    if (options.columnDef.weightBy)
-        return _weightedAverage(options);
-    else
-        return _simpleAverage(options);
+    return _simpleAverage(options);
 }
 function _simpleAverage(options) {
     var sum = _straightSumAggregation(options);
@@ -132,6 +210,23 @@ function _simpleAverage(options) {
     return count == 0 ? "" : sum / count;
 }
 
+function _nonZeroweightedAverage(options) {
+    var data = options.data, columnDef = options.columnDef, weightBy = options.columnDef.weightBy;
+    var sumProduct = 0;
+    var zeroWeightSum = 0;
+    for (var i = 0; i < data.length; i++) {
+        sumProduct += (data[i][columnDef.colTag] || 0 ) * (data[i][weightBy.colTag] || 0);
+        //find the zero values
+        if (!data[i][columnDef.colTag] || data[i][columnDef.colTag] === 0) {
+            zeroWeightSum += (data[i][weightBy.colTag] || 0);
+        }
+    }
+    var weightSum = _straightSumAggregation({data: data, columnDef: weightBy});
+    weightSum -= zeroWeightSum;
+
+    return weightSum == 0 ? "" : sumProduct / weightSum;
+}
+
 function _weightedAverage(options) {
     var data = options.data, columnDef = options.columnDef, weightBy = options.columnDef.weightBy;
     var sumProduct = 0;
@@ -139,11 +234,56 @@ function _weightedAverage(options) {
         sumProduct += (data[i][columnDef.colTag] || 0 ) * (data[i][weightBy.colTag] || 0);
 
     var weightSum = _straightSumAggregation({data: data, columnDef: weightBy});
-    return weightSum == 0 ? 0 : sumProduct / weightSum;
+    return weightSum == 0 ? "" : sumProduct / weightSum;
+}
+
+function _distinctSum(options) {
+    var data = options.data;
+    var columnDef = options.columnDef;
+    var aggregationLevel = columnDef.aggregationLevel;
+    var result = 0, temp = 0;
+    var distinctValues = {};
+    for (var i = 0; i < data.length; i++) {
+        var levelValue = data[i][aggregationLevel.colTag];
+        distinctValues[levelValue] = data[i][columnDef.colTag];
+    }
+    for (var level in distinctValues) {
+        temp = distinctValues[level] || 0;
+        result += temp;
+    }
+    return result;
+}
+
+function _percentageContribution(options) {
+    var data = options.data;
+    var columnDef = options.columnDef;
+    var numerator = columnDef.numerator;
+    var denominator = columnDef.denominator;
+    if (!denominator || !denominator.colTag || !numerator || !numerator.colTag) {
+        //don't define columns
+        return ""
+    }
+
+    var numeratorValue = _straightSumAggregation({data: data, columnDef: numerator}) || 0;
+
+    var denominatorColumn = null;
+    options.columnDefs.forEach(function (column) {
+        if (column.colTag == denominator.colTag) {
+            denominatorColumn = column;
+        }
+    });
+
+    if (!denominatorColumn) {
+        var denominatorValue = 0;
+    } else {
+        denominatorValue = _distinctSum({data: data, columnDef: denominatorColumn});
+    }
+
+    return denominatorValue == 0 ? "" : ((numeratorValue / denominatorValue) * 100);
 }
 
 function _count(options) {
-    return options.data.length || 0;
+    return (options.data.length || 0) + "";
 }
 
 /**
@@ -161,10 +301,17 @@ function _countDistinct(options) {
     /**
      * collect all rows of the given column in data as an array
      */
-    const allData =
+    var allData =
         options.data.map(function (row) {
             return row[columnDef.colTag];
         });
+
+    //convert date number to date string
+    if (columnDef.format && columnDef.format.toLowerCase() === DATE_FORMAT) {
+        allData = allData.map(function (item) {
+            return convertDateNumberToString(columnDef, item);
+        })
+    }
 
     /**
      * iterate through allData - keeping only unique members
@@ -174,13 +321,65 @@ function _countDistinct(options) {
         if (allData[j] !== "" && allData[j] !== null && uniqData.indexOf(allData[j]) == -1)
             uniqData.push(allData[j]);
     }
-    return uniqData.length == 1 ? uniqData[0] : uniqData.length;
+
+    return uniqData.length == 1 ? uniqData[0] : applyThousandSeparator(uniqData.length);
 }
 
-function _countAndDistinct(options) {
+function _countAndDistinctPureJS(options) {
+    var data = options.data, columnDef = options.columnDef;
     var count = _count(options);
     var distinctCount = _countDistinct(options);
-    return count == 1 ? distinctCount : "(" + distinctCount + "/" + count + ")"
+    return count == 1 ? formatNumber(distinctCount, columnDef, columnDef.formatConfig) : "(" + applyThousandSeparator(distinctCount) + "/" + applyThousandSeparator(count) + ")"
+}
+
+// convert and format dates
+function convertDateNumberToString(columnDef, value) {
+    var displayContent = value;
+    if (columnDef && columnDef.format && columnDef.format.toLowerCase() === DATE_FORMAT) {
+        // if displayContent is a number, we assume displayContent is in milliseconds
+        if (typeof value === "number") {
+            if (columnDef.formatInstructions != null) { //If format instruction is specified
+                displayContent = moment(value).format(columnDef.formatInstructions)
+            } else {
+                displayContent = new Date(value).toLocaleDateString();
+            }
+        }
+    }
+    return displayContent;
+}
+
+function _countAndDistinctUnderscoreJS(options) {
+    var data = options.data, columnDef = options.columnDef;
+    var sortedData = _.pluck(data, columnDef.colTag).sort(function (a, b) {
+        if (a === b)
+            return 0;
+        return a > b ? 1 : -1;
+    });
+
+    //convert date number to date string
+    if (columnDef.format && columnDef.format.toLowerCase() === DATE_FORMAT) {
+        sortedData = sortedData.map(function (item) {
+            return convertDateNumberToString(columnDef, item);
+        })
+    }
+
+    const uniqData = _.chain(sortedData).uniq(true).compact().value();
+    columnDef.formatConfig = buildLAFConfigObject(columnDef);
+    return "(" + (uniqData.length === 1 ? formatNumber(uniqData[0], columnDef, columnDef.formatConfig) : applyThousandSeparator(uniqData.length)) + "/" + applyThousandSeparator(data.length) + ")";
+}
+
+/**
+ * if underscorejs is included, we will use a much more efficient algo to aggregate and count
+ * otherwise a pure javascript approach is used but is slow for large number of rows
+ * @param options
+ * @return {*}
+ * @private
+ */
+function _countAndDistinct(options) {
+    if (typeof _ === 'function')
+        return _countAndDistinctUnderscoreJS(options);
+    else
+        return _countAndDistinctPureJS(options);
 }
 
 function _mostDataPoints(options) {

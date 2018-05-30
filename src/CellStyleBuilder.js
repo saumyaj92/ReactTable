@@ -99,7 +99,7 @@ function getColumnAlignment(columnDef) {
  * @returns {*}
  */
 function formatNumber(value, columnDef, formatConfig) {
-    if (!isNaN(value) && (columnDef.format == "number" || columnDef.format == "currency") && value!== "") {
+    if (!isNaN(value) && (columnDef.format == "number" || columnDef.format == "currency")) {
         // multiplier
         value *= formatConfig.multiplier;
         // rounding
