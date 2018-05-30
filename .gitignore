@@ -3,5 +3,3 @@ node_modules/
 dist/.module-cache/
 build/
 .idea/
-.bowerrc
-library/

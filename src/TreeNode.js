@@ -52,15 +52,12 @@ TreeNode.prototype.expandRecursively = function () {
 
 /**
  * Appends the given row into the ultimateChildren of the specified child node of the current node
+ * @param childSectorName
+ * @param childRow
  * @returns the child TreeNode that the data was appended to
- * @param options
  */
 TreeNode.prototype.appendRowToChildren = function (options) {
-    var childSectorName = options.childSectorName,
-        childRow = options.childRow,
-        sortIndex = options.sortIndex,
-        subtotalByColumnDef = options.subtotalByColumnDef;
-
+    var childSectorName = options.childSectorName, childRow = options.childRow, sortIndex = options.sortIndex, subtotalByColumnDef = options.subtotalByColumnDef;
     // create a new child node if one by the current sector name does not exist
     if (this._childrenSectorNameMap[childSectorName] == null) {
         var child = new TreeNode(childSectorName, this);
@@ -103,37 +100,6 @@ function buildCompositeSorter(funcs, isSummaryRow) {
         return sortOutcome;
     }
 }
-
-/**
- * recursively sort the
- * @param subtotalByArr
- * @param sortType
- * @param lrootNode
- * @param level
- * @param sortFuncs
- */
-function sortTreeBySubtotalsHelper(subtotalByArr, sortType, lrootNode, level) {
-    if (level >= subtotalByArr.length) {
-        return;
-    }
-    var columnDef = subtotalByArr[level];
-    var subtotalColumnDef = {colTag: 'subtotalBy', formatConfig: columnDef.formatConfig};
-    var sortFunc = getSortFunction(columnDef, sortType, subtotalColumnDef);
-
-    if (lrootNode.hasChild()) {
-        lrootNode.children.sort(function (a, b) {
-            return sortFunc(a.rowData, b.rowData);
-        });
-
-        lrootNode.children.forEach(function (child) {
-            sortTreeBySubtotalsHelper(subtotalByArr, sortType, child, level + 1);
-        });
-    }
-}
-
-TreeNode.prototype.sortTreeBySubtotals = function (subtotalByArr, sortType) {
-    sortTreeBySubtotalsHelper(subtotalByArr, sortType, this, 0);
-};
 
 /**
  * Sort the child nodes of this node recursively according to the array of sort functions passed into sortFuncs
@@ -180,77 +146,22 @@ TreeNode.prototype.filterByColumn = function (columnDef, textToFilterBy, caseSen
         this.filterByTextColumn(columnDef, textToFilterBy, caseSensitive, customFilterer);
 };
 
-function containsWildcart(filterArr) {
-    var searchText = filterArr[0];
-    if (filterArr.length == 1 && (searchText.indexOf('?')> -1 || searchText.indexOf('*')>-1)) {
-        return true;
-    }else{
-        return false;
-    }
-}
-
-/**
- *
- * @param filterArr
- * @param columnDef
- * @param row
- * @param caseSensitive
- * @returns {boolean} to indicate hide this row or not
- */
-function filterInArray(filterArr, columnDef, row, caseSensitive) {
-
-    if (columnDef.isSearchText || containsWildcart(filterArr)) {
-        var searchText = filterArr[0];
-        searchText = searchText.toLowerCase();
-        searchText = searchText.replace(/\?/g, '.?');
-        searchText = searchText.replace(/\*/g, '.*');
-        var re = new RegExp('^' + searchText);
-        var displayValue = buildCellLookAndFeel(columnDef, row).value.toString().toLowerCase();
-        var found = displayValue.match(re);
-        if (found) {
-            return false;
-        } else {
-            return true;
-        }
-    } else {
-        found = null;
-        if (caseSensitive) {
-            found = filterArr.some(function (filterText) {
-                return buildCellLookAndFeel(columnDef, row).value.toString() === filterText;
-            });
-        } else {
-            found = filterArr.some(function (filterText) {
-                return buildCellLookAndFeel(columnDef, row).value.toString().toUpperCase() === filterText.toUpperCase();
-            });
-        }
-        return !found;
-    }
-}
-
-/**
- * filter data and recursively check if hidden parent tree node
- * @param columnDef
- * @param textToFilterBy
- * @param caseSensitive
- * @param customFilterer
- */
 TreeNode.prototype.filterByTextColumn = function (columnDef, textToFilterBy, caseSensitive, customFilterer) {
-
-    if (this.hasChild()) {
-        // Filter aggregations
+    // Filter aggregations
+    for (var i = 0; i < this.children.length; i++) {
+        // Call recursively to filter leaf nodes first
+        this.children[i].filterByColumn(columnDef, textToFilterBy, caseSensitive, customFilterer);
+        // Check to see if all children are hidden, then hide parent if so
         var allChildrenHidden = true;
-        for (var i = 0; i < this.children.length; i++) {
-            // Call recursively to filter leaf nodes first
-            this.children[i].filterByColumn(columnDef, textToFilterBy, caseSensitive, customFilterer);
-            // Check to see if all children are hidden, then hide parent if so
-            if (this.children[i].hiddenByFilter == false) {
+        for (var j = 0; j < this.children[i].ultimateChildren.length; j++) {
+            if (!this.children[i].ultimateChildren[j].hiddenByFilter) {
                 allChildrenHidden = false;
+                break;
             }
         }
-        this.hiddenByFilter = allChildrenHidden;
-    } else {
-        // filter ultimateChildren
-        var showAtLeastOneChild = false;
+        this.children[i].hiddenByFilter = allChildrenHidden;
+    }
+    if (!this.hasChild()) {
         for (var i = 0; i < this.ultimateChildren.length; i++) {
             var uChild = this.ultimateChildren[i];
             if (customFilterer) {
@@ -259,51 +170,38 @@ TreeNode.prototype.filterByTextColumn = function (columnDef, textToFilterBy, cas
             else {
                 var row = {};
                 row[columnDef.colTag] = uChild[columnDef.colTag];
-                if (columnDef.format === 'date' && !columnDef.isSearchText) {
-                    row[columnDef.colTag] = convertDateNumberToString(columnDef, row[columnDef.colTag]);
-                    textToFilterBy = textToFilterBy.map(function (filter) {
-                        var filterTmp = filter;
-                        if (typeof filter === 'string') {
-                            filterTmp = parseInt(filter);
-                            if (filterTmp < 100000) {
-                                filterTmp = filter;
-                            }
-                        }
-                        return convertDateNumberToString(columnDef, filterTmp);
-                    })
-                }
-                uChild.hiddenByFilter = typeof row[columnDef.colTag] === 'undefined' || uChild.hiddenByFilter || filterInArray(textToFilterBy, columnDef, row, caseSensitive);
+                if (caseSensitive)
+                    uChild.hiddenByFilter = uChild.hiddenByFilter || buildCellLookAndFeel(columnDef, row).value.toString().search(textToFilterBy) === -1;
+                else
+                    uChild.hiddenByFilter = uChild.hiddenByFilter || buildCellLookAndFeel(columnDef, row).value.toString().toUpperCase().search(textToFilterBy.toUpperCase()) === -1;
             }
-            showAtLeastOneChild = showAtLeastOneChild || !uChild.hiddenByFilter;
         }
-        this.hiddenByFilter = !showAtLeastOneChild;
     }
 };
 
 TreeNode.prototype.filterByNumericColumn = function (columnDef, filterData) {
-
-    if (this.hasChild()) {
-        // Filter aggregations
+    // Filter aggregations
+    for (var i = 0; i < this.children.length; i++) {
+        // Call recursively to filter leaf nodes first
+        this.children[i].filterByNumericColumn(columnDef, filterData);
+        // Check to see if all children are hidden, then hide parent if so
         var allChildrenHidden = true;
-        for (var i = 0; i < this.children.length; i++) {
-            // Call recursively to filter leaf nodes first
-            this.children[i].filterByNumericColumn(columnDef, filterData);
-            // Check to see if all children are hidden, then hide parent if so
-            if (this.children[i].hiddenByFilter == false) {
+        for (var j = 0; j < this.children[i].ultimateChildren.length; j++) {
+            if (!this.children[i].ultimateChildren[j].hiddenByFilter) {
                 allChildrenHidden = false;
+                break;
             }
         }
-        this.hiddenByFilter = allChildrenHidden;
-    } else {
-        // filter ultimateChildren
-        var showAtLeastOneChild = false;
+        this.children[i].hiddenByFilter = allChildrenHidden;
+    }
+    if (!this.hasChild()) {
         for (var i = 0; i < this.ultimateChildren.length; i++) {
             var uChild = this.ultimateChildren[i];
             var row = {};
             row[columnDef.colTag] = uChild[columnDef.colTag];
             var filterOutNode = false;
-            var formatConfig = buildLAFConfigObject(columnDef);
-            var value = row[columnDef.colTag] * parseFloat(formatConfig.multiplier);
+            var multiplier = buildLAFConfigObject(columnDef).multiplier;
+            var value = row[columnDef.colTag] * parseFloat(multiplier);
             for (var j = 0; j < filterData.length; j++) {
                 if (filterData[j].gt !== undefined) {
                     if (!(value > filterData[j].gt))
@@ -314,19 +212,13 @@ TreeNode.prototype.filterByNumericColumn = function (columnDef, filterData) {
                         filterOutNode = true;
                 }
                 else if (filterData[j].eq !== undefined) {
-                    // rounding
-                    value = value.toFixed(formatConfig.roundTo);
-                    var filterValue = filterData[j].eq.toString().replace(/,/g, '');
-                    if (!(parseFloat(value) == parseFloat(filterValue))) {
+                    if (!(value == filterData[j].eq))
                         filterOutNode = true;
-                    }
                 }
             }
 
             uChild.hiddenByFilter = filterOutNode;
-            showAtLeastOneChild = showAtLeastOneChild || !uChild.hiddenByFilter;
         }
-        this.hiddenByFilter = !showAtLeastOneChild;
     }
 };
 
