@@ -10,7 +10,7 @@ function exportToExcel(data, filename, table){
     // Row Vs Column
     var rowCount=1;
     $.each(data.data, function(i, value) {
-        if( value.length > 0 && typeof value[0].match === "function" && value[0].match("Grand Total") ) {
+        if( value.length > 0 && value[0] != undefined  && typeof value[0].match === "function" && value[0].match("Grand Total") ) {
             rowCount++;
             return;
         }
@@ -124,7 +124,7 @@ function exportToPDF(data, filename, table){
     });
 
     $.each(data.data, function(i, value) {
-        if( value.length > 0 && typeof value[0].match === "function" && value[0].match("Grand Total") ) {
+        if( value.length > 0 && value[0] != undefined && typeof value[0].match === "function" && value[0].match("Grand Total") ) {
             return;
         }
         $.each(value, function(index, value2) {
@@ -159,7 +159,7 @@ function exportToPDF(data, filename, table){
     var rowCalc = 1;
 
     $.each(data.data, function(i, value) {
-        if( value.length > 0 && typeof value[0].match === "function" && value[0].match("Grand Total") ) {
+        if( value.length > 0 && value[0] != undefined  && typeof value[0].match === "function" && value[0].match("Grand Total") ) {
             return;
         }
         rowCalc++;
