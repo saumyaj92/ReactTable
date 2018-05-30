@@ -1,3 +1,4 @@
+
 /**
  * Construct Look and Feel object with instructions on how to display cell content
  * @param columnDef
@@ -30,10 +31,8 @@ function buildLAFConfigObject(columnDef) {
  */
 function computeCellAlignment(alignment, row, columnDef) {
     // force right alignment for summary level numbers
-    if (row[columnDef.colTag]) {
-        if (!row.isDetail && (!isNaN(row[columnDef.colTag]) || !isNaN((row[columnDef.colTag]).replace(/,/g, ""))))
-            return "right";
-    }
+    if (!row.isDetail && !isNaN(row[columnDef.colTag]))
+        return "right";
 
     // default alignment
     return alignment;
@@ -49,7 +48,7 @@ function computeCellAlignment(alignment, row, columnDef) {
  */
 function buildCellLookAndFeel(columnDef, row) {
     var results = {classes: {}, styles: {}, value: {}};
-    var value = row[columnDef.colTag] || ""; // avoid undefined
+    var value = row[columnDef.colTag];
 
     columnDef.formatConfig = columnDef.formatConfig != null ? columnDef.formatConfig : buildLAFConfigObject(columnDef);
     var formatConfig = columnDef.formatConfig;
@@ -67,9 +66,6 @@ function buildCellLookAndFeel(columnDef, row) {
     // attach currency
     if (columnDef.format == "currency")
         value = "$" + value;
-
-    if (columnDef.format === 'date')
-        value = convertDateNumberToString(columnDef, value);
 
     // determine alignment
     results.styles.textAlign = computeCellAlignment(formatConfig.alignment, row, columnDef);
@@ -1296,7 +1292,7 @@ function _mostDataPoints(options) {
     // Row Vs Column
     var rowCount=1;
     $.each(data.data, function(i, value) {
-        if( value.length > 0 && value[0] != undefined && typeof value[0].match === "function" && value[0].match("Grand Total") ) {
+        if( value.length > 0 && typeof value[0].match === "function" && value[0].match("Grand Total") ) {
             rowCount++;
             return;
         }
@@ -1437,7 +1433,7 @@ function exportToPDF(data, filename, table){
     });
 
     $.each(data.data, function(i, value) {
-        if( value.length > 0 && value[0] != undefined && typeof value[0].match === "function" && value[0].match("Grand Total") ) {
+        if( value.length > 0 && typeof value[0].match === "function" && value[0].match("Grand Total") ) {
             return;
         }
         $.each(value, function(index, value2) {
@@ -1472,7 +1468,7 @@ function exportToPDF(data, filename, table){
     var rowCalc = 1;
 
     $.each(data.data, function(i, value) {
-        if( value.length > 0 && value[0] != undefined && typeof value[0].match === "function" && value[0].match("Grand Total") ) {
+        if( value.length > 0 && typeof value[0].match === "function" && value[0].match("Grand Total") ) {
             return;
         }
         rowCalc++;
@@ -1585,9 +1581,7 @@ const SubMenu = React.createClass({displayName: "SubMenu",
     propTypes: {
         subMenu: React.PropTypes.object,
         menuItem: React.PropTypes.object,
-        onMenuClick: React.PropTypes.func,
-        table : React.PropTypes.object
-
+        onMenuClick: React.PropTypes.func
     },
     getDefaultProps: function () {
         return {
@@ -1601,18 +1595,6 @@ const SubMenu = React.createClass({displayName: "SubMenu",
     },
     showSubMenu: function () {
         // determine whether we should show the info box left or right facing, depending on its position in the headers
-        var width = $(this.props.table.getDOMNode()).width();
-        var position = $(this.getDOMNode()).parent().position();
-        this.state.subMenu = this.props.subMenu;
-
-        if (width - position.left < 200) {
-            delete this.state.subMenu.props.style.left;
-            this.state.subMenu.props.style.right = '100%';
-        } else {
-            delete this.state.subMenu.props.style.right;
-            this.state.subMenu.props.style.left = '100%';
-        }
-
         this.setState({showSubMenu: true});
     },
     hideSubMenu: function () {
@@ -1620,7 +1602,7 @@ const SubMenu = React.createClass({displayName: "SubMenu",
     },
     render: function () {
         const subMenu = this.state.showSubMenu ?
-            this.state.subMenu : null;
+            this.props.subMenu : null;
 
         return (
             React.createElement("div", {onClick: this.props.onMenuClick, className: "menu-item", style: {position:"relative"}, 
@@ -2929,41 +2911,16 @@ function ReactTableGetInitialState() {
         upperVisualBound: this.props.pageSize,
         extraStyle: {}, // TODO document use
         filterInPlace: {}, // TODO document use, but sounds like a legit state
-        currentFilters: [], // TODO same as above
-        searchInPlace: {}, // use a search box to filter a column
-
-        rasterizedData: null, // table data for render
-        buildRasterizedData: true, // when change table structure such as sort or subtotal, set this to true.
-        hideSingleSubtotalChild: this.props.hideSingleSubtotalChild // if a subtotal level only has one child, hide the child
+        currentFilters: [] // TODO same as above
     };
 
     /**
      * justifiable as a state because its children contain sub-states like collapse/expanded or hide/un-hide
      * these states/sub-states arise from user interaction with this component, and not derivable from props or other states
      */
-    initialState.rootNode = getRootNodeGivenProps(this.props, initialState);
-
+    initialState.rootNode = createNewRootNode(this.props, initialState);
     if (initialState.sortBy.length > 0)
         initialState.rootNode.sortNodes(convertSortByToFuncs(initialState.columnDefs, initialState.sortBy));
-
-    addSubtotalTitleToRowData(initialState.rootNode);
-
-    if (initialState.sortBy.length > 0) {
-        var sortSubtotalByColumn = null;
-        initialState.sortBy.forEach(function (sortSetting) {
-            if (sortSetting.colTag === 'subtotalBy') {
-                sortSubtotalByColumn = sortSetting;
-            }
-            ;
-        });
-        if (sortSubtotalByColumn) {
-            initialState.sortBy.length = 0;
-            initialState.sortBy.push(sortSubtotalByColumn);
-            initialState.rootNode.sortTreeBySubtotals(initialState.subtotalBy, sortSubtotalByColumn.sortType);
-        } else {
-            initialState.rootNode.sortNodes(convertSortByToFuncs(initialState.columnDefs, initialState.sortBy));
-        }
-    }
 
     var selections = getInitialSelections(this.props.selectedRows, this.props.selectedSummaryRows);
     initialState.selectedDetailRows = selections.selectedDetailRows;
@@ -2972,139 +2929,24 @@ function ReactTableGetInitialState() {
     return initialState;
 }
 
-function getRootNodeGivenProps(props, initialState) {
-    if (props.dataAsTree && props.dataAsTreeTitleKey) {
-        props.data = [];
-        return createNewNodeFromStrucutre(props.dataAsTree, props.dataAsTreeTitleKey);
-    }
-    else {
-        return createNewRootNode(props, initialState);
-    }
-}
-
-/**
- * add subtotal title for a subtotal row.
- */
-function addSubtotalTitleToRowData(root) {
-    if (root == null) {
+function ReactTableHandleSelect(selectedRow) {
+    var rowKey = this.props.rowKey;
+    if (rowKey == null)
         return;
-    }
+    if (selectedRow.isDetail != null & selectedRow.isDetail == true)
+        this.props.onSelectCallback(selectedRow, this.toggleSelectDetailRow(selectedRow[rowKey]));
+    else if (this.props.onSummarySelectCallback)
+        this.props.onSummarySelectCallback(selectedRow, this.toggleSelectSummaryRow(generateSectorKey(selectedRow.sectorPath)));
 
-    root.rowData['subtotalBy'] = root.sectorTitle;
-    root.children.forEach(function (child) {
-        addSubtotalTitleToRowData(child);
-    });
-}
-
-/**
- * to select a row, need to press ctrl and mouse click. this won't confuse double click a cell
- * if don't press ctrl but do a mouse click, all selected rows will be unselected.
- * @param selectedRow
- * @param event
- * @constructor
- */
-function ReactTableHandleSelect(selectedRow, event) {
-    if (event.shiftKey) {
-        //press shift key
-        var rowKey = this.props.rowKey;
-        if (!rowKey || !selectedRow[rowKey])
-            return;
-
-        event.stopPropagation();
-        event.preventDefault();
-        if (!this.state.shiftKey) {
-            this.state.shiftKey = {firstRow: selectedRow};
-        } else if (!this.state.shiftKey.firstRow) {
-            this.state.shiftKey.firstRow = selectedRow;
-        } else {
-            //add first click row to current selected row
-            var parent = selectedRow.parent;
-            var start = Math.min(this.state.shiftKey.firstRow.indexInParent, selectedRow.indexInParent);
-            var end = Math.max(this.state.shiftKey.firstRow.indexInParent, selectedRow.indexInParent);
-            this.state.selectedDetailRows = {};
-            for (var i = start; i <= end; i++) {
-                var row = parent.ultimateChildren[i];
-                this.toggleSelectDetailRow(row[rowKey]);
-            }
-        }
-        return;
-    }
-
-    if (!event.ctrlKey) {
-        //don't press ctrl, clean selected rows
-        var clearSelected = false;
-        if (Object.keys(this.state.selectedDetailRows).length > 0) {
-            this.state.selectedDetailRows = {};
-            clearSelected = true;
-        }
-
-        if (Object.keys(this.state.selectedSummaryRows).length > 0) {
-            this.state.selectedSummaryRows = {};
-            clearSelected = true;
-        }
-
-        if (!this.state.shiftKey || this.state.shiftKey.firstRow) {
-            this.state.shiftKey = {firstRow: null};
-        }
-
-        if (selectedRow.isDetail != null && selectedRow.isDetail == true) {
-            if (this.props.onRowClickCallback) {
-                this.props.onRowClickCallback(selectedRow, false);
-            }
-        }
-        else if (this.props.onSummaryRowClickCallback) {
-            this.props.onSummaryRowClickCallback(selectedRow, false);
-        }
-
-        if (clearSelected) {
-            this.setState({});
-        }
-    } else {
-        var rowKey = this.props.rowKey;
-        if (!rowKey || !selectedRow[rowKey])
-            return;
-
-        if (selectedRow.isDetail != null && selectedRow.isDetail == true) {
-            var state = this.toggleSelectDetailRow(selectedRow[rowKey]);
-            if (this.props.onSelectCallback) {
-                this.props.onSelectCallback(selectedRow, state);
-            }
-        }
-        else {
-            state = this.toggleSelectSummaryRow(generateSectorKey(selectedRow.sectorPath));
-            if (this.props.onSummarySelectCallback) {
-                this.props.onSummarySelectCallback(selectedRow, state);
-            }
-        }
-    }
 }
 
 function ReactTableHandleColumnFilter(columnDefToFilterBy, e, dontSet) {
-    columnDefToFilterBy.isFiltered = true;
-
     if (typeof dontSet !== "boolean")
         dontSet = undefined;
 
-    if (Array.isArray(e)) {
-        var filterData = e;
-    } else {
-        var target = $(e.target);
-        if (target.is("span")) {
-            filterData = target.text();
-        } else {
-            filterData =  target.children('span').text();
-        }
-    }
-
-    if (!Array.isArray(filterData)) {
-        if (columnDefToFilterBy.format == 'number') {
-            filterData = [{eq: filterData}];
-        } else {
-            filterData = [filterData];
-        }
-    }
-
+    var filterData = e.target ? (e.target.value || e.target.textContent) : e;
     var caseSensitive = !(this.props.filtering && this.props.filtering.caseSensitive === false);
+
     if (!dontSet) {
         // Find if this column has already been filtered.  If it is, we need to remove it before filtering again
         for (var i = 0; i < this.state.currentFilters.length; i++) {
@@ -3116,35 +2958,16 @@ function ReactTableHandleColumnFilter(columnDefToFilterBy, e, dontSet) {
         }
     }
 
-    if (filterData.length != 0) {
-        var customFilterer;
-        if (this.props.filtering && this.props.filtering.customFilterer) {
-            customFilterer = this.props.filtering.customFilterer;
-        }
-        this.state.rootNode.filterByColumn(columnDefToFilterBy, filterData, caseSensitive, customFilterer);
+    var customFilterer;
+    if (this.props.filtering && this.props.filtering.customFilterer) {
+        customFilterer = this.props.filtering.customFilterer;
     }
+    this.state.rootNode.filterByColumn(columnDefToFilterBy, filterData, caseSensitive, customFilterer);
 
     if (!dontSet) {
-        buildFilterData.call(this, true);
         this.state.currentFilters.push({colDef: columnDefToFilterBy, filterText: filterData});
-        this.setState({
-            rootNode: this.state.rootNode,
-            currentFilters: this.state.currentFilters,
-            buildRasterizedData: true
-        });
-    }
-
-    this.props.afterFilterCallback && this.props.afterFilterCallback(columnDefToFilterBy, filterData);
-}
-
-/**
- * reset all treeNode hiddenByFilter to false
- * @param lrootNode
- */
-function resetHiddenForAllTreeNodes(lrootNode) {
-    lrootNode.hiddenByFilter = false;
-    for (var i = 0; i < lrootNode.children.length; i++) {
-        resetHiddenForAllTreeNodes(lrootNode.children[i]);
+        $("input.rt-" + columnDefToFilterBy.colTag + "-filter-input").val(filterData);
+        this.setState({rootNode: this.state.rootNode, currentFilters: this.state.currentFilters});
     }
 }
 
@@ -3156,8 +2979,6 @@ function ReactTableHandleRemoveFilter(colDef, dontSet) {
     for (var i = 0; i < this.state.rootNode.ultimateChildren.length; i++) {
         this.state.rootNode.ultimateChildren[i].hiddenByFilter = false;
     }
-    resetHiddenForAllTreeNodes(this.state.rootNode);
-
     // Remove filter from list of current filters
     for (i = 0; i < this.state.currentFilters.length; i++) {
         if (this.state.currentFilters[i].colDef === colDef) {
@@ -3171,42 +2992,25 @@ function ReactTableHandleRemoveFilter(colDef, dontSet) {
     }
 
     if (!dontSet) {
-        buildFilterData.call(this, true);
-        colDef.isFiltered = false;
         var fip = this.state.filterInPlace;
         delete fip[colDef.colTag];
         this.setState({
             filterInPlace: fip,
             rootNode: this.state.rootNode,
-            currentFilters: this.state.currentFilters,
-            buildRasterizedData: true
+            currentFilters: this.state.currentFilters
         });
+        $("input.rt-" + colDef.colTag + "-filter-input").val("");
     }
-
-    this.props.afterFilterCallback && this.props.afterFilterCallback(colDef, []);
 }
 
 function ReactTableHandleRemoveAllFilters() {
     recursivelyClearFilters(this.state.rootNode);
-    buildFilterData.call(this, true);
-    //remove filter icon in header
-    this.state.columnDefs.forEach(function (colDef) {
-        colDef.isFiltered = false;
-    });
-
-    this.state.currentFilters.forEach(function (filter) {
-        this.props.afterFilterCallback && this.props.afterFilterCallback(filter.colDef, []);
-    }, this);
-
-    // setState() does not immediately mutate this.state but creates a pending state transition.
-    // Accessing this.state after calling this method can potentially return the existing value.
-    // To avoid currentFilters haven't been changed when next time access it.
-    this.state.currentFilters = [];
     this.setState({
         filterInPlace: {},
         rootNode: this.state.rootNode,
-        buildRasterizedData: true
+        currentFilters: []
     });
+    $("input.rt-filter-input").val("");
 }
 
 function recursivelyClearFilters(node) {
@@ -3233,103 +3037,44 @@ function applyAllFilters() {
 function ReactTableHandleClearSubtotal(event) {
     event.stopPropagation();
     const newState = this.state;
-
-    newState.buildRasterizedData = true;
     newState.currentPage = 1;
     newState.lowerVisualBound = 0;
     newState.upperVisualBound = this.props.pageSize;
-    //newState.firstColumnLabel = buildFirstColumnLabel(this);
+    newState.firstColumnLabel = buildFirstColumnLabel(this);
     /**
      * do not set subtotalBy or sortBy to blank array - simply pop all elements off, so it won't disrupt external reference
      */
     const subtotalBy = this.state.subtotalBy;
-    for (var i=subtotalBy.length,r=0;i>r;r++)
+    while (subtotalBy.length > 0)
         subtotalBy.pop();
     newState.subtotalBy = subtotalBy;
-    destorySubtrees(newState);
-    //newState.rootNode = createNewRootNode(this.props, newState);
+    newState.rootNode = createNewRootNode(this.props, newState);
     /**
      * subtotaling destroys sort, so here we re-apply sort
      */
     if (this.state.sortBy.length > 0)
         newState.rootNode.sortNodes(convertSortByToFuncs(this.state.columnDefs, this.state.sortBy));
-
-    applyAllFilters.call(this);
     this.setState(newState);
 }
-
-/**
- * check if a tree node needs to be hidden. if a tree node has no children to show, hide it.
- * @param lrootNode
- */
-function hideTreeNodeWhenNoChildrenToShow(lrootNode) {
-    if (lrootNode.hasChild()) {
-        // Filter aggregations
-        var allChildrenHidden = true;
-        for (var i = 0; i < lrootNode.children.length; i++) {
-            // Call recursively to filter leaf nodes first
-            hideTreeNodeWhenNoChildrenToShow(lrootNode.children[i]);
-            // Check to see if all children are hidden, then hide parent if so
-            if (lrootNode.children[i].hiddenByFilter == false) {
-                allChildrenHidden = false;
-            }
-        }
-        lrootNode.hiddenByFilter = allChildrenHidden;
-    } else {
-        var hasAtLeastOneChildToShow = false;
-        for (var j = 0; j < lrootNode.ultimateChildren.length; j++) {
-            var uChild = lrootNode.ultimateChildren[j];
-            if (uChild.hiddenByFilter == false) {
-                hasAtLeastOneChildToShow = true;
-                break;
-            }
-        }
-        lrootNode.hiddenByFilter = !hasAtLeastOneChildToShow;
-    }
-};
 
 function ReactTableHandleSubtotalBy(columnDef, partitions, event) {
     event.stopPropagation();
     const subtotalBy = this.state.subtotalBy || [];
-    this.state.scrollToLeft = true;
     /**
      * determine if the subtotal operation require partitioning of the column values first
      */
-    if (partitions != null && partitions != "" && columnDef) {
-
-        if (columnDef.format == DATE_FORMAT && columnDef.formatInstructions != null) {
-            var start = new Date('1/1/3002').getTime();
-            var last = new Date('1/1/1002').getTime();
-            var data = this.state.rootNode.ultimateChildren;
-            for (var i = data.length - 1; i >= 0; i--) {
-                tmp = data[i][columnDef.colTag];
-                if (tmp < start) start = tmp;
-                if (tmp > last) last = tmp;
-            }
-
-            if (partitions == WEEKLY || partitions == MONTHLY || partitions == DAILY || partitions == QUARTERLY || partitions == YEARLY) {
-                columnDef.subtotalByRange = getParts(partitions, start, last);
-            }
-            else {     //Use partitions based on user input buckets
-                var parts = [];
-                var dates = partitions.split(",");
-                for (i = 0; i < dates.length; i++) {
-                    parts.push(new Date(dates[i]).getTime());
-                }
-                columnDef.subtotalByRange = parts;
-            }
-        }
-        else {
-            columnDef.subtotalByRange = partitionNumberLine(partitions);
-        }
-
-    }
+    if (partitions != null && partitions != "" && columnDef)
+        columnDef.subtotalByRange = partitionNumberLine(partitions);
 
     /**
      * make sure a valid column def is passed in
      */
     if (columnDef != null && columnDef.constructor.name != 'SyntheticMouseEvent')
         subtotalBy.push(columnDef);
+
+    // TODO Chris - what is this?
+    if (this.state.currentFilters.length > 0)
+        applyAllFilters.call(this);
 
     /**
      * extend the current state to derive new state after subtotal operation, then create a new rootNode
@@ -3338,57 +3083,15 @@ function ReactTableHandleSubtotalBy(columnDef, partitions, event) {
     newState.currentPage = 1;
     newState.lowerVisualBound = 0;
     newState.upperVisualBound = this.props.pageSize;
+    newState.firstColumnLabel = buildFirstColumnLabel(this);
     newState.subtotalBy = subtotalBy;
-    newState.buildRasterizedData = true;
-    buildSubtreeForNewSubtotal(newState, partitions);
-    //newState.rootNode = createNewRootNode(this.props, newState);
+    newState.rootNode = createNewRootNode(this.props, newState);
     /**
      * subtotaling destroys sort, so here we re-apply sort
      */
     if (this.state.sortBy.length > 0)
         newState.rootNode.sortNodes(convertSortByToFuncs(this.state.columnDefs, this.state.sortBy));
-
-    // subtotaling break filter also, because of create one more level of treeNode.
-    // need hide treeNode which has no children to show
-    if (this.state.currentFilters.length > 0) {
-        hideTreeNodeWhenNoChildrenToShow(this.state.rootNode);
-    }
-
-
     this.setState(newState);
-}
-
-//get parts for subtotalling of dates
-function getParts(frequency, start, last) {
-    var parts = [];
-    var count = 1;
-    var unit = "days";
-
-    start = moment(start).startOf('day');
-    if (frequency == MONTHLY) {
-        unit = "months";
-        count = 1;
-        start = moment(start).startOf('month');
-    } else if (frequency == QUARTERLY) {
-        unit = "months";
-        count = 3;
-        start = moment(start).startOf('quarter');
-    } else if (frequency == YEARLY) {
-        unit = "years";
-        count = 1;
-        start = moment(start).startOf('year');
-    } else if (frequency == WEEKLY) {
-        unit = "days";
-        count = 7;
-        start = moment(start).startOf('isoWeek');
-    }
-    parts.push(start.unix() * 1000);
-
-    while (start <= last) {
-        start = moment(start).add(count, unit).unix() * 1000;
-        parts.push(start);
-    }
-    return parts;
 }
 
 function ReactTableHandleAdd() {
@@ -3404,8 +3107,7 @@ function ReactTableHandleRemove(columnDefToRemove) {
             newColumnDefs.push(this.state.columnDefs[i]);
     }
     this.setState({
-        columnDefs: newColumnDefs,
-        buildRasterizedData: true
+        columnDefs: newColumnDefs
     });
     // TODO pass copies of these variables to avoid unintentional perpetual binding
     if (this.props.afterColumnRemove != null)
@@ -3415,7 +3117,7 @@ function ReactTableHandleRemove(columnDefToRemove) {
 function ReactTableHandleToggleHide(summaryRow, event) {
     event.stopPropagation();
     summaryRow.treeNode.collapsed = !summaryRow.treeNode.collapsed;
-    this.setState({buildRasterizedData: true});
+    this.setState({});
 }
 
 function ReactTableHandlePageClick(page) {
@@ -3444,61 +3146,14 @@ function partitionNumberLine(partitions) {
     return floatBuckets;
 }
 
-function expandSubtotalLevelHelper(currentLevel, clickLevel, lTreeNode) {
-    if (lTreeNode == null) {
-        return;
-    }
-    if (currentLevel <= clickLevel) {
-        lTreeNode.collapsed = false;
-    } else {
-        lTreeNode.collapsed = true;
-    }
-    for (var i = 0; i < lTreeNode.children.length; i++) {
-        expandSubtotalLevelHelper(currentLevel + 1, clickLevel, lTreeNode.children[i]);
-    }
-}
-
-/**
- * when click a subtotal level, expand this level
- * @param levelIndex
- * @param event
- */
-function expandSubtotalLevel(levelIndex, event) {
-    event.stopPropagation();
-    expandSubtotalLevelHelper(0, levelIndex, this.state.rootNode);
-    this.setState({buildRasterizedData: true});
-}
-
-/**
- * create subtotalBy information in header, e.g. [ tradeName -> tranType ]
- * @param table
- * @returns {string}
- */
 function buildFirstColumnLabel(table) {
-    if (table.state.subtotalBy.length > 0) {
-
-        var subtotalHierarchy = [];
-        table.state.subtotalBy.forEach(function (subtotalBy, index) {
-            var column = table.state.columnDefs.filter(function (columnDef) {
-                return columnDef.colTag === subtotalBy.colTag;
-            });
-
-            if (column.length == 0) {
-                throw "subtotalBy field '" + subtotalBy.colTag + "' doesn't exist!";
-            }
-
-            var arrow = index == table.state.subtotalBy.length - 1 ? "" : " -> ";
-            subtotalHierarchy.push(React.createElement("span", {className: "rt-header-clickable", onClick: expandSubtotalLevel.bind(table, index)}, " ", column[0].text, 
-                React.createElement("span", {style: {color: 'white'}}, arrow)
-            ));
-        });
-
-        return (
-            React.createElement("span", null, " [ ", subtotalHierarchy, " ] ")
-        )
-    } else {
-        return table.state.columnDefs[0].text;
+    var result = [];
+    if (table.state.subtotalBy) {
+        for (var i = 0; i < table.state.subtotalBy.length; i++)
+            result.push(table.state.subtotalBy[i].text);
     }
+    result.push(table.state.columnDefs[0].text);
+    return result;
 }
 
 function getInitialSelections(selectedRows, selectedSummaryRows) {
@@ -3619,163 +3274,17 @@ function findDefByColTag(columnDefs, colTag) {
 ;/**
  * Transform the current props into a tree structure representing the complex state
  * @param props
- * @param state
  * @return {TreeNode}
  */
 function createNewRootNode(props, state) {
+
     var rootNode = buildTreeSkeleton(props, state);
     recursivelyAggregateNodes(rootNode, state);
 
     rootNode.sortRecursivelyBySortIndex();
     rootNode.foldSubTree();
 
-    if (state.currentFilters.length > 0 && state.subtotalBy.length > 0) {
-        hideSubtotalRow(rootNode);
-    }
-
     return rootNode;
-}
-/*
- this.sectorTitle = sectorTitle;
- this.parent = parent;
- this.subtotalByColumnDef = {};
- this.rowData = null;
- this.display = true;
- this.children = [];
- this.ultimateChildren = [];
- this.collapsed = true
- */
-function createNewNodeFromStrucutre(treeData, titleKey, parent){
-    var node = new TreeNode( parent ? treeData[titleKey] : "Grand Total", parent);
-    _.each(treeData.children, function(child){
-        if( child.children.length > 0 )
-            node.children.push(createNewNodeFromStrucutre(child, titleKey, node));
-        else
-            node.ultimateChildren.push(createNewNodeFromStrucutre(child, titleKey, node));
-    });
-    if( node.ultimateChildren.length == 0 )
-        node.isDetail = true;
-    else
-        setupChildrenMap(node);
-    _.each(treeData, function(value, key){
-        if( !_.isObject(value) ) {
-            if( !node.rowData )
-                node.rowData = {};
-            if( node.ultimateChildren.length == 0 )
-                node[key] = value;
-            else
-                node.rowData[key] = value;
-        }
-    });
-
-    return node;
-}
-
-function setupChildrenMap(node){
-    _.each(node.children, function(child){
-        node.ultimateChildren = node.ultimateChildren.concat(child.ultimateChildren);
-        node._childrenSectorNameMap[child.sectorTitle] = child;
-    });
-}
-
-/**
- * hide subtotal rows which children has been hidden.
- * @param treeNode
- */
-function hideSubtotalRow(treeNode) {
-    if (treeNode.hasChild()) {
-        // Filter aggregations
-        var allChildrenHidden = true;
-        for (var i = 0; i < treeNode.children.length; i++) {
-            // Call recursively to filter leaf nodes first
-            hideSubtotalRow(treeNode.children[i]);
-            // Check to see if all children are hidden, then hide parent if so
-            if (treeNode.children[i].hiddenByFilter == false) {
-                allChildrenHidden = false;
-            }
-        }
-        treeNode.hiddenByFilter = allChildrenHidden;
-    } else {
-        // filter ultimateChildren
-        var showAtLeastOneChild = false;
-        for (var j = 0; j < treeNode.ultimateChildren.length; j++) {
-            var uChild = treeNode.ultimateChildren[j];
-            showAtLeastOneChild = showAtLeastOneChild || !uChild.hiddenByFilter;
-        }
-        treeNode.hiddenByFilter = !showAtLeastOneChild;
-    }
-}
-
-/**
- * adding new subtotalBy, only create the deepest level subtree
- * @param lrootNode
- * @param newSubtotal
- * @param state
- * @param partitions, partitions for subtotalling of date fields
- */
-function buildSubtree(lrootNode, newSubtotal, state, partitions) {
-    if (lrootNode.children.length == 0 || (lrootNode.children.children && lrootNode.children.children.length == 0)) {
-        //find the leaf node
-        for (var j = 0; j < lrootNode.ultimateChildren.length; j++) {
-            //build subtree
-            populateChildNodesForRow(lrootNode, lrootNode.ultimateChildren[j], newSubtotal, partitions);
-        }
-        for (var key in lrootNode._childrenSectorNameMap) {
-            //generate subtree's aggregation info
-            var node = lrootNode._childrenSectorNameMap[key];
-            node.rowData = aggregateSector(node.ultimateChildren, state.columnDefs, newSubtotal);
-
-        }
-    } else {
-        for (var i = 0; i < lrootNode.children.length; i++) {
-            buildSubtree(lrootNode.children[i], newSubtotal, state, partitions);
-        }
-    }
-}
-
-/**
- * add a new subtotalBy, build subtrees in leaf nodes
- * @param state
- * @param partitions, partitions for subtotalling of date fields
- * @returns {*}
- */
-function buildSubtreeForNewSubtotal(state, partitions) {
-    var newSubtotal = [state.subtotalBy[state.subtotalBy.length - 1]];
-    buildSubtree(state.rootNode, newSubtotal, state, partitions);
-    state.rootNode.sortRecursivelyBySortIndex();
-    state.rootNode.foldSubTree();
-
-    return state.rootNode;
-}
-
-/**
- * destory all subtree in root
- * @param lroot
- */
-function destorySubtreesRecursively(lroot) {
-    if (lroot.children.length == 0) {
-        return;
-    }
-
-    for (var i = 0; i < lroot.children.length; i++) {
-        destorySubtreesRecursively(lroot.children[i]);
-        lroot.children[i] = null;
-
-
-    }
-    lroot.children = [];
-    lroot._childrenSectorNameMap = {};
-}
-
-/**
- * destory root's subtrees to clear subtotals
- * @param state
- */
-function destorySubtrees(state) {
-    destorySubtreesRecursively(state.rootNode);
-    state.rootNode.ultimateChildren.forEach(function(child){
-        child.hiddenByFilter = false;
-    });
 }
 
 /**
@@ -3787,37 +3296,19 @@ function destorySubtrees(state) {
 function buildTreeSkeleton(props, state) {
     var rootNode = new TreeNode("Grand Total", null), rawData = props.data, i;
     if (props.disableGrandTotal)
-        rootNode.display = false;
-    var subtotalByArr;
-    if(state.subtotalBy != null) {
-        subtotalByArr = [];
-        for (i = 0; i < state.subtotalBy.length; i++) {
-            var result = state.columnDefs.filter(function( colDef ) {
-                return colDef.colTag == state.subtotalBy[i].colTag;
-            });
-            if(result[0] != null){
-                subtotalByArr.push(result[0]);
-            }
-        }
-    }
+        rootNode.display = false
     for (i = 0; i < rawData.length; i++) {
         rootNode.appendUltimateChild(rawData[i]);
+        populateChildNodesForRow(rootNode, rawData[i], state.subtotalBy);
     }
-
-    subtotalByArr.forEach(function (subtotalColumn) {
-        //TODO: add partitions
-        buildSubtree(rootNode, [subtotalColumn], state, null);
-    });
-
     return rootNode
 }
 
 /**
  * Populate an existing skeleton (represented by the root node) with summary level data
  * @param node
- * @param state
+ * @param tableProps
  */
-// can postpone generate lower level aggregation information to accelerate initial render
 function recursivelyAggregateNodes(node, state) {
     // aggregate the current node
     node.rowData = aggregateSector(node.ultimateChildren, state.columnDefs, state.subtotalBy);
@@ -3835,27 +3326,16 @@ function recursivelyAggregateNodes(node, state) {
  * ----------------------------------------------------------------------
  */
 
-/**
- * Append the proper children TreeNode(s) to the `currentNode`
- * Children nodes are generated by running `subtotalBy` through
- * a sectoring process. The unique set of sector names resulting from this sectoring process
- * determines the children nodes for the `currentNode`
- *
- * @param currentNode {TreeNode}
- * @param ultimateChild {object}
- * @param subtotalBy
- * @param partitions, partitions for subtotalling of date fields
- */
-function populateChildNodesForRow(currentNode, ultimateChild, subtotalBy, partitions) {
-    var i;
+function populateChildNodesForRow(rootNode, row, subtotalBy) {
+    var i, currentNode = rootNode;
     if (subtotalBy == null || subtotalBy.length == 0)
         return;
     for (i = 0; i < subtotalBy.length; i++) {
-        const sectoringResult = classifyRow(ultimateChild, subtotalBy[i], partitions);
-        currentNode.appendRowToChildren({
-            childSectorName: sectoringResult.sectorName,
-            childRow: ultimateChild,
-            sortIndex: sectoringResult.sortIndex,
+        var result = getSectorName(row, subtotalBy[i]);
+        currentNode = currentNode.appendRowToChildren({
+            childSectorName: result.sectorName,
+            childRow: row,
+            sortIndex: result.sortIndex,
             subtotalByColumnDef: subtotalBy[i]
         });
     }
@@ -3914,15 +3394,12 @@ TreeNode.prototype.expandRecursively = function () {
 
 /**
  * Appends the given row into the ultimateChildren of the specified child node of the current node
+ * @param childSectorName
+ * @param childRow
  * @returns the child TreeNode that the data was appended to
- * @param options
  */
 TreeNode.prototype.appendRowToChildren = function (options) {
-    var childSectorName = options.childSectorName,
-        childRow = options.childRow,
-        sortIndex = options.sortIndex,
-        subtotalByColumnDef = options.subtotalByColumnDef;
-
+    var childSectorName = options.childSectorName, childRow = options.childRow, sortIndex = options.sortIndex, subtotalByColumnDef = options.subtotalByColumnDef;
     // create a new child node if one by the current sector name does not exist
     if (this._childrenSectorNameMap[childSectorName] == null) {
         var child = new TreeNode(childSectorName, this);
@@ -3967,37 +3444,6 @@ function buildCompositeSorter(funcs, isSummaryRow) {
 }
 
 /**
- * recursively sort the
- * @param subtotalByArr
- * @param sortType
- * @param lrootNode
- * @param level
- * @param sortFuncs
- */
-function sortTreeBySubtotalsHelper(subtotalByArr, sortType, lrootNode, level) {
-    if (level >= subtotalByArr.length) {
-        return;
-    }
-    var columnDef = subtotalByArr[level];
-    var subtotalColumnDef = {colTag: 'subtotalBy', formatConfig: columnDef.formatConfig};
-    var sortFunc = getSortFunction(columnDef, sortType, subtotalColumnDef);
-
-    if (lrootNode.hasChild()) {
-        lrootNode.children.sort(function (a, b) {
-            return sortFunc(a.rowData, b.rowData);
-        });
-
-        lrootNode.children.forEach(function (child) {
-            sortTreeBySubtotalsHelper(subtotalByArr, sortType, child, level + 1);
-        });
-    }
-}
-
-TreeNode.prototype.sortTreeBySubtotals = function (subtotalByArr, sortType) {
-    sortTreeBySubtotalsHelper(subtotalByArr, sortType, this, 0);
-};
-
-/**
  * Sort the child nodes of this node recursively according to the array of sort functions passed into sortFuncs
  * @param sortFuncs
  */
@@ -4019,77 +3465,22 @@ TreeNode.prototype.filterByColumn = function (columnDef, textToFilterBy, caseSen
         this.filterByTextColumn(columnDef, textToFilterBy, caseSensitive, customFilterer);
 };
 
-function containsWildcart(filterArr) {
-    var searchText = filterArr[0];
-    if (filterArr.length == 1 && (searchText.indexOf('?')> -1 || searchText.indexOf('*')>-1)) {
-        return true;
-    }else{
-        return false;
-    }
-}
-
-/**
- *
- * @param filterArr
- * @param columnDef
- * @param row
- * @param caseSensitive
- * @returns {boolean} to indicate hide this row or not
- */
-function filterInArray(filterArr, columnDef, row, caseSensitive) {
-
-    if (columnDef.isSearchText || containsWildcart(filterArr)) {
-        var searchText = filterArr[0];
-        searchText = searchText.toLowerCase();
-        searchText = searchText.replace(/\?/g, '.?');
-        searchText = searchText.replace(/\*/g, '.*');
-        var re = new RegExp('^' + searchText);
-        var displayValue = buildCellLookAndFeel(columnDef, row).value.toString().toLowerCase();
-        var found = displayValue.match(re);
-        if (found) {
-            return false;
-        } else {
-            return true;
-        }
-    } else {
-        found = null;
-        if (caseSensitive) {
-            found = filterArr.some(function (filterText) {
-                return buildCellLookAndFeel(columnDef, row).value.toString() === filterText;
-            });
-        } else {
-            found = filterArr.some(function (filterText) {
-                return buildCellLookAndFeel(columnDef, row).value.toString().toUpperCase() === filterText.toUpperCase();
-            });
-        }
-        return !found;
-    }
-}
-
-/**
- * filter data and recursively check if hidden parent tree node
- * @param columnDef
- * @param textToFilterBy
- * @param caseSensitive
- * @param customFilterer
- */
 TreeNode.prototype.filterByTextColumn = function (columnDef, textToFilterBy, caseSensitive, customFilterer) {
-
-    if (this.hasChild()) {
-        // Filter aggregations
+    // Filter aggregations
+    for (var i = 0; i < this.children.length; i++) {
+        // Call recursively to filter leaf nodes first
+        this.children[i].filterByColumn(columnDef, textToFilterBy, caseSensitive, customFilterer);
+        // Check to see if all children are hidden, then hide parent if so
         var allChildrenHidden = true;
-        for (var i = 0; i < this.children.length; i++) {
-            // Call recursively to filter leaf nodes first
-            this.children[i].filterByColumn(columnDef, textToFilterBy, caseSensitive, customFilterer);
-            // Check to see if all children are hidden, then hide parent if so
-            if (this.children[i].hiddenByFilter == false) {
+        for (var j = 0; j < this.children[i].ultimateChildren.length; j++) {
+            if (!this.children[i].ultimateChildren[j].hiddenByFilter) {
                 allChildrenHidden = false;
+                break;
             }
         }
-        this.hiddenByFilter = allChildrenHidden;
-    } else {
-        // filter ultimateChildren
-        var showAtLeastOneChild = false;
+        this.children[i].hiddenByFilter = allChildrenHidden;
+    }
+    if (!this.hasChild()) {
         for (var i = 0; i < this.ultimateChildren.length; i++) {
             var uChild = this.ultimateChildren[i];
             if (customFilterer) {
@@ -4098,51 +3489,38 @@ TreeNode.prototype.filterByTextColumn = function (columnDef, textToFilterBy, cas
             else {
                 var row = {};
                 row[columnDef.colTag] = uChild[columnDef.colTag];
-                if (columnDef.format === 'date' && !columnDef.isSearchText) {
-                    row[columnDef.colTag] = convertDateNumberToString(columnDef, row[columnDef.colTag]);
-                    textToFilterBy = textToFilterBy.map(function (filter) {
-                        var filterTmp = filter;
-                        if (typeof filter === 'string') {
-                            filterTmp = parseInt(filter);
-                            if (filterTmp < 100000) {
-                                filterTmp = filter;
-                            }
-                        }
-                        return convertDateNumberToString(columnDef, filterTmp);
-                    })
-                }
-                uChild.hiddenByFilter = typeof row[columnDef.colTag] === 'undefined' || uChild.hiddenByFilter || filterInArray(textToFilterBy, columnDef, row, caseSensitive);
+                if (caseSensitive)
+                    uChild.hiddenByFilter = uChild.hiddenByFilter || buildCellLookAndFeel(columnDef, row).value.toString().search(textToFilterBy) === -1;
+                else
+                    uChild.hiddenByFilter = uChild.hiddenByFilter || buildCellLookAndFeel(columnDef, row).value.toString().toUpperCase().search(textToFilterBy.toUpperCase()) === -1;
             }
-            showAtLeastOneChild = showAtLeastOneChild || !uChild.hiddenByFilter;
         }
-        this.hiddenByFilter = !showAtLeastOneChild;
     }
 };
 
 TreeNode.prototype.filterByNumericColumn = function (columnDef, filterData) {
-
-    if (this.hasChild()) {
-        // Filter aggregations
+    // Filter aggregations
+    for (var i = 0; i < this.children.length; i++) {
+        // Call recursively to filter leaf nodes first
+        this.children[i].filterByNumericColumn(columnDef, filterData);
+        // Check to see if all children are hidden, then hide parent if so
         var allChildrenHidden = true;
-        for (var i = 0; i < this.children.length; i++) {
-            // Call recursively to filter leaf nodes first
-            this.children[i].filterByNumericColumn(columnDef, filterData);
-            // Check to see if all children are hidden, then hide parent if so
-            if (this.children[i].hiddenByFilter == false) {
+        for (var j = 0; j < this.children[i].ultimateChildren.length; j++) {
+            if (!this.children[i].ultimateChildren[j].hiddenByFilter) {
                 allChildrenHidden = false;
+                break;
             }
         }
-        this.hiddenByFilter = allChildrenHidden;
-    } else {
-        // filter ultimateChildren
-        var showAtLeastOneChild = false;
+        this.children[i].hiddenByFilter = allChildrenHidden;
+    }
+    if (!this.hasChild()) {
         for (var i = 0; i < this.ultimateChildren.length; i++) {
             var uChild = this.ultimateChildren[i];
             var row = {};
             row[columnDef.colTag] = uChild[columnDef.colTag];
             var filterOutNode = false;
-            var formatConfig = buildLAFConfigObject(columnDef);
-            var value = row[columnDef.colTag] * parseFloat(formatConfig.multiplier);
+            var multiplier = buildLAFConfigObject(columnDef).multiplier;
+            var value = row[columnDef.colTag] * parseFloat(multiplier);
             for (var j = 0; j < filterData.length; j++) {
                 if (filterData[j].gt !== undefined) {
                     if (!(value > filterData[j].gt))
@@ -4153,19 +3531,13 @@ TreeNode.prototype.filterByNumericColumn = function (columnDef, filterData) {
                         filterOutNode = true;
                 }
                 else if (filterData[j].eq !== undefined) {
-                    // rounding
-                    value = value.toFixed(formatConfig.roundTo);
-                    var filterValue = filterData[j].eq.toString().replace(/,/g, '');
-                    if (!(parseFloat(value) == parseFloat(filterValue))) {
+                    if (!(value == filterData[j].eq))
                         filterOutNode = true;
-                    }
                 }
             }
 
             uChild.hiddenByFilter = filterOutNode;
-            showAtLeastOneChild = showAtLeastOneChild || !uChild.hiddenByFilter;
         }
-        this.hiddenByFilter = !showAtLeastOneChild;
     }
 };
 
@@ -4201,63 +3573,20 @@ function _hasSortIndex(node) {
  * @param rootNode
  * @return {Array}
  */
-function rasterizeTree(options, hasSubtotalBy, exportOutside, skipSubtotalRow) {
+function rasterizeTree(options) {
     var node = options.node, firstColumn = options.firstColumn;
-    var flatData = [];
 
-    if (!skipSubtotalRow) {
-        node = _decorateRowData(node, firstColumn, hasSubtotalBy, exportOutside);
-        flatData = node.display == false ? [] : [node.rowData];
-    }
+    node = _decorateRowData(node, firstColumn);
+    var flatData = node.display == false ? [] : [node.rowData];
 
-    if (node.ultimateChildren.length == 1 && options.hideSingleSubtotalChild && node.parent) {
-        // if the subtotal level only has one child, hide this child. only show subtotal row;
-        node.ultimateChildren[0].hiddenBySingleSubtotalRow = true;
-        //node.ultimateChildren[0].hiddenByFilter = true;
-        if (node.hasChild()) {
-            node.noCollapseIcon = false;
-        } else {
-            node.noCollapseIcon = true;
-        }
-    }
-
-    if (exportOutside) {
+    if (!node.collapsed) {
         if (node.children.length > 0)
-            _rasterizeChildren(flatData, options, hasSubtotalBy, exportOutside, skipSubtotalRow);
+            _rasterizeChildren(flatData, options);
         else
-            _rasterizeDetailRows(node, flatData,hasSubtotalBy);
-    }
-    else if (!node.collapsed) {
-        if (node.children.length > 0)
-            _rasterizeChildren(flatData, options, hasSubtotalBy, exportOutside, skipSubtotalRow);
-        else
-            _rasterizeDetailRows(node, flatData,hasSubtotalBy);
+            _rasterizeDetailRows(node, flatData);
     }
 
     return flatData;
-}
-
-/**
- * when tree structure is changed, this function should be invoked
- */
-function rasterizeTreeForRender() {
-    addExtraColumnForSubtotalBy.call(this);
-
-    const data = rasterizeTree({
-        node: this.state.rootNode,
-        firstColumn: this.state.columnDefs[0],
-        hideSingleSubtotalChild: this.props.hideSingleSubtotalChild
-    }, this.state.subtotalBy.length > 0);
-
-    //those attributes of state is used by render() of ReactTable
-	if(this.props.disableGrandTotal == true) {
-		this.state.maxRows = data.length;
-	}else{ 
-		this.state.maxRows = data.length - 1;// maxRows is referenced later during event handling to determine upperVisualBound
-		this.state.grandTotal = data.splice(0, 1).map(rowMapper, this);
-	}
-    this.state.rasterizedData = data;
-    this.state.buildRasterizedData = false;
 }
 
 /*
@@ -4266,33 +3595,24 @@ function rasterizeTreeForRender() {
  * ----------------------------------------------------------------------
  */
 
-function _rasterizeChildren(flatData, options, hasSubtotalBy, exportOutside, skipSubtotalRow) {
+function _rasterizeChildren(flatData, options) {
     var node = options.node, firstColumn = options.firstColumn;
     var i, j, intermediateResult;
     for (i = 0; i < node.children.length; i++) {
-        intermediateResult = rasterizeTree({
-            hideSingleSubtotalChild: options.hideSingleSubtotalChild,
-            node: node.children[i],
-            firstColumn: firstColumn
-        }, hasSubtotalBy, exportOutside, skipSubtotalRow);
+        intermediateResult = rasterizeTree({node: node.children[i], firstColumn: firstColumn});
         for (j = 0; j < intermediateResult.length; j++) {
-            //
-            if (!(intermediateResult[j].treeNode && intermediateResult[j].treeNode.hiddenByFilter))
+            if( !(intermediateResult[j].treeNode && intermediateResult[j].treeNode.hiddenByFilter) )
                 flatData.push(intermediateResult[j]);
         }
     }
 }
 
-function _rasterizeDetailRows(node, flatData,hasSubtotalBy) {
+function _rasterizeDetailRows(node, flatData) {
     for (var i = 0; i < node.ultimateChildren.length; i++) {
         var detailRow = node.ultimateChildren[i];
-        //set to true only when has subtotaling
-        var hiddenBySingleSubtotalRow = hasSubtotalBy &&detailRow.hiddenBySingleSubtotalRow;
-        if (!(detailRow.hiddenByFilter || hiddenBySingleSubtotalRow)) {
+        if( !detailRow.hiddenByFilter ) {
             detailRow.sectorPath = node.rowData.sectorPath;
             detailRow.isDetail = true;
-            detailRow.parent = node;
-            detailRow.indexInParent = i;
             flatData.push(detailRow);
         }
     }
@@ -4302,14 +3622,9 @@ function _rasterizeDetailRows(node, flatData,hasSubtotalBy) {
  * enhances the `rowData` attribute of the give node with info
  * that will be useful for rendering/interactivity such as sectorPath
  */
-function _decorateRowData(node, firstColumn, hasSubtotalBy, exportOutside) {
+function _decorateRowData(node, firstColumn) {
     node.rowData.sectorPath = node.getSectorPath();
-    if (hasSubtotalBy) {
-        node.rowData[firstColumn.colTag] = node.sectorTitle;
-    }
-
-    if (!exportOutside) {
-        node.rowData.treeNode = node;
-    }
+    node.rowData[firstColumn.colTag] = node.sectorTitle;
+    node.rowData.treeNode = node;
     return node;
 }

@@ -1,4 +1,4 @@
-# ReactTable [![Build Status](https://travis-ci.org/erfangc/ReactTable.svg?branch=master)](https://travis-ci.org/erfangc/ReactTable)
+# ReactTable
 
 High Performance HTML Table with Group By functionality Implemented using Facebook [react.js](https://github.com/facebook/react)
 
@@ -24,8 +24,6 @@ Capabilities Include:
 ## Install
 
 Run the following `bower` command, this will install [react.js](https://github.com/facebook/react) and [jQuery](http://jquery.com/download/) as a dependecy.
-
-###You MUST use `react-with-addons.js` instead of `react.js`
 
     > bower install ReactTable
 
@@ -121,7 +119,7 @@ You will first need to download and install [react-tools](http://facebook.github
 
 Each time you update source files, you should run the JSX compiler provided as part of react-tools via:
 
-    > node $react_tools_base/bin/jsx ./src ./build
+    > nodejs $react_tools_base/bin/jsx ./src ./build
     // assuming your working directory is the project base directory
 
 Alternatively you can automatically perform this by using `jsx --watch` or setup a file watcher in Webstorm. If you are setting up a file watcher in Webstorm, it may be best to install `react-tools` locally instead of globally, simply remove `-g` from the above `npm` command

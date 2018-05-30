@@ -60,9 +60,7 @@ const SubMenu = React.createClass({
     propTypes: {
         subMenu: React.PropTypes.object,
         menuItem: React.PropTypes.object,
-        onMenuClick: React.PropTypes.func,
-        table : React.PropTypes.object
-
+        onMenuClick: React.PropTypes.func
     },
     getDefaultProps: function () {
         return {
@@ -76,18 +74,6 @@ const SubMenu = React.createClass({
     },
     showSubMenu: function () {
         // determine whether we should show the info box left or right facing, depending on its position in the headers
-        var width = $(this.props.table.getDOMNode()).width();
-        var position = $(this.getDOMNode()).parent().position();
-        this.state.subMenu = this.props.subMenu;
-
-        if (width - position.left < 200) {
-            delete this.state.subMenu.props.style.left;
-            this.state.subMenu.props.style.right = '100%';
-        } else {
-            delete this.state.subMenu.props.style.right;
-            this.state.subMenu.props.style.left = '100%';
-        }
-
         this.setState({showSubMenu: true});
     },
     hideSubMenu: function () {
@@ -95,7 +81,7 @@ const SubMenu = React.createClass({
     },
     render: function () {
         const subMenu = this.state.showSubMenu ?
-            this.state.subMenu : null;
+            this.props.subMenu : null;
 
         return (
             <div onClick={this.props.onMenuClick} className="menu-item" style={{position:"relative"}}

@@ -1,3 +1,4 @@
+
 /**
  * Construct Look and Feel object with instructions on how to display cell content
  * @param columnDef
@@ -30,10 +31,8 @@ function buildLAFConfigObject(columnDef) {
  */
 function computeCellAlignment(alignment, row, columnDef) {
     // force right alignment for summary level numbers
-    if (row[columnDef.colTag]) {
-        if (!row.isDetail && (!isNaN(row[columnDef.colTag]) || !isNaN((row[columnDef.colTag]).replace(/,/g, ""))))
-            return "right";
-    }
+    if (!row.isDetail && !isNaN(row[columnDef.colTag]))
+        return "right";
 
     // default alignment
     return alignment;
@@ -49,7 +48,7 @@ function computeCellAlignment(alignment, row, columnDef) {
  */
 function buildCellLookAndFeel(columnDef, row) {
     var results = {classes: {}, styles: {}, value: {}};
-    var value = row[columnDef.colTag] || ""; // avoid undefined
+    var value = row[columnDef.colTag];
 
     columnDef.formatConfig = columnDef.formatConfig != null ? columnDef.formatConfig : buildLAFConfigObject(columnDef);
     var formatConfig = columnDef.formatConfig;
@@ -67,9 +66,6 @@ function buildCellLookAndFeel(columnDef, row) {
     // attach currency
     if (columnDef.format == "currency")
         value = "$" + value;
-
-    if (columnDef.format === 'date')
-        value = convertDateNumberToString(columnDef, value);
 
     // determine alignment
     results.styles.textAlign = computeCellAlignment(formatConfig.alignment, row, columnDef);
