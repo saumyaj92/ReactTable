@@ -52,6 +52,19 @@ function ReactTableHandleSelect(selectedRow) {
 
 }
 
+function ReactTableHandleUnselectAll(){
+    this.props.onUnselectAllCallback(this.clearAllRowSelections());
+}
+
+function ReactTableHandleShowSelected() {
+
+    var newState = this.state;
+    if (this.state.sortBy.length > 0 && _.keys(this.state.selectedDetailRows).length > 0)
+        newState.rootNode.sortSelectedUnSelectedNodes(this.state.selectedDetailRows,
+            convertSortByToFuncs(this.state.columnDefs, this.state.sortBy));
+    this.setState(newState);
+}
+
 function ReactTableHandleColumnFilter(columnDefToFilterBy, e, dontSet) {
     if (typeof dontSet !== "boolean")
         dontSet = undefined;
@@ -170,6 +183,7 @@ function ReactTableHandleClearSubtotal(event) {
 }
 
 function ReactTableHandleSubtotalBy(columnDef, partitions, event) {
+    if(event)
     event.stopPropagation();
     const subtotalBy = this.state.subtotalBy || [];
     /**
@@ -239,6 +253,16 @@ function ReactTableHandlePageClick(page) {
 
 }
 
+function ReactTableHandleShowAllRows(){
+    $(this.getDOMNode()).find(".rt-scrollable").get(0).addEventListener('scroll', this.handleScroll);
+    this.setState({
+        disableInfiniteScrolling: false,
+        disablePagination: true,
+        pageSize: 50,
+        upperVisualBound: 50
+    });
+}
+
 /*
  * ----------------------------------------------------------------------
  * Helpers
@@ -246,11 +270,11 @@ function ReactTableHandlePageClick(page) {
  */
 function partitionNumberLine(partitions) {
     var i, stringBuckets, floatBuckets = [];
-    stringBuckets = partitions.split(",");
+    stringBuckets = partitions.replace(/m/g,"000").split(",");
     for (i = 0; i < stringBuckets.length; i++) {
         var floatBucket = parseFloat(stringBuckets[i]);
         if (!isNaN(floatBucket))
-            floatBuckets.push(floatBucket);
+            floatBuckets.push(floatBucket/1000);
         floatBuckets.sort(function (a, b) {
             return a - b;
         });
