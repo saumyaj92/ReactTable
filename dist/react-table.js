@@ -20,6 +20,7 @@ function buildLAFConfigObject(columnDef) {
         result[key] = tokens[i].split(":", 2)[1];
     }
     return result;
+    
 }
 
 /**
