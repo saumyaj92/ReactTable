@@ -5,40 +5,39 @@ $(function () {
         {
             colTag: "last_name",
             text: "Last Name",
-            format: 'CATEGORICAL',
-            /**
-             * custom aggregation method - efficient count distinct by pre-sorting
-             * using underscore
-             * @param options
-             */
-            aggregationFunction: function (options) {
-                var data = options.data, columnDef = options.columnDef;
-                const sortedData = _.pluck(data, columnDef.colTag).sort(function (a, b) {
-                    if (a === b)
-                        return 0;
-                    return a > b ? 1 : -1;
-                });
-                const uniqData = _.chain(sortedData).uniq(true).compact().value();
-                return uniqData.length === 1 ? uniqData[0] : uniqData.length;
-            },
             customMenuItems: function (table, columnDef) {
                 return [React.createElement(SummarizeControl, {table: table, columnDef: columnDef})];
             }
         },
-        {colTag: "email", text: "Email"},
+        {
+            colTag: "email", text: "Email",
+            rightClickMenuItems: {
+                menus: []
+            }
+        },
         {
             colTag: "nationality", text: "Nationality",
             sort: function (a, b) {
                 return a.nationality.localeCompare(b.nationality);
+            },
+            aggregationMethod: "count_and_distinct",
+            rightClickMenuItems: {
+                menus: [
+                    {
+                        description: 'Open in Google',
+                        callback: function (rowData, curColumnDef, columnDefs, event) {
+                            event.stopPropagation();
+                            console.log(rowData[curColumnDef.colTag]);
+                            window.open("https://www.google.com/#q=" + rowData[curColumnDef.colTag]);
+                        },
+                        followingSeparator: false
+                    }
+                ]
             }
         },
         {
             colTag: "superlong",
             text: "Some header",
-            customMenuItems: [React.createElement(InfoBox, {
-                title: "Info Box!",
-                text: "Hover Me! I am very long winded definition of some column that you can one day be looking at ... "
-            })],
             isLoading: true
         },
         {
@@ -56,7 +55,36 @@ $(function () {
                 return classes;
             }
         },
-        {colTag: "fruit_preference", text: "Fruit Preference"},
+        {
+            colTag: "fruit_preference", text: "Fruit Preference",
+            onDoubleClick: function (content, colDef, colNum, row) {
+                row.edit = true;
+                row.editCol = colDef.colTag;
+                table.setState({buildRasterizedData: true});
+            },
+            cellTemplate: function (row, colDef, content) {
+                if (row.edit == true && row.editCol == colDef.colTag) {
+                    return React.createElement("div", {},
+                        React.createElement("input", {
+                            type: 'text', defaultValue: row.fruit_preference,
+                            autoFocus: true,
+                            onKeyPress: function (event) {
+                                if (event.charCode == 13) {
+                                    row.fruit_preference = event.target.value;
+                                    row.edit = false;
+                                    table.setState({buildRasterizedData: true});
+                                }
+                            },
+                            onBlur: function (event) {
+                                row.edit = false;
+                            }
+                        })
+                    )
+                } else {
+                    return React.createElement("div", {}, React.createElement("span", {}, row.fruit_preference))
+                }
+            }
+        },
         {
             colTag: "score_weight_factor",
             format: "number",
@@ -66,7 +94,6 @@ $(function () {
 
         }
     ];
-
     $("#stop-loading").on('click', function () {
         columnDefs[4].isLoading = false;
         table.setState({});
@@ -75,40 +102,61 @@ $(function () {
         var testData = data;
         // first table
         var options = {
-            //filtering: {
-            //    disable: true
-            //},
-            disablePagination: false,
+            hasCheckbox: true,
+            checkboxCallback: function (rows) {
+                console.log(rows);
+            },
+            hideSingleSubtotalChild: true,
+            hideSubtotaledColumns: true,
+            enableScrollPage: true,
             disableInfiniteScrolling: true,
-            enableEditColumn: true,
+            disableGrandTotal: false,
             sortBy: [{colTag: "test_score", sortType: "asc"}],
-            subtotalBy: [{
-                colTag: "nationality", text: "Nationality"
-            }],
+            subtotalBy: [
+                {colTag: "fruit_preference", text: "Fruit Preference"},
+                {colTag: "nationality", text: "Nationality"}
+            ],
             rowKey: 'id',
             data: testData,
-            newIssuesRows: [testData[0],testData[1]],
-            pageSize: 40,
-            onRightClick: function (row, event) {
+            onRightClick: function (row, columnDef, event) {
                 console.log(row);
-                console.log(state);
                 event.preventDefault();
             },
-            height: "750px",
+            cellRightClickMenu: {
+                style: {textAlign: 'left'},
+                menus: [
+                    {
+                        description: 'Open in Google',
+                        callback: function (rowData, curColumnDef, columnDefs, event) {
+                            event.stopPropagation();
+                            console.log(rowData[curColumnDef.colTag]);
+                            window.open("https://www.google.com/#q=" + rowData[curColumnDef.colTag]);
+                        },
+                        followingSeparator: false
+                    },
+                    {
+                        description: 'Open in Bing',
+                        callback: function (rowData, curColumnDef, columnDefs, event) {
+                            event.stopPropagation();
+                            console.log(rowData[curColumnDef.colTag]);
+                            window.open("https://www.bing.com/search?q=" + rowData[curColumnDef.colTag]);
+                        },
+                        followingSeparator: true
+                    },
+                    {
+                        description: 'Open in Yahoo!',
+                        callback: function (rowData, curColumnDef, columnDefs, event) {
+                            event.stopPropagation();
+                            console.log(rowData[curColumnDef.colTag]);
+                            alert("don't know how to open in yahoo.");
+                        },
+                        followingSeparator: false
+                    }
+                ]
+            },
+            height: "500px",
+            pageSize: 50,
             columnDefs: columnDefs,
-            customMenuItems: {
-                Description: {
-                    infoBox: "formatInstructions"
-                }
-            },
-            onCellChangeCallback: function(columnDef, row, input){
-                var newRow = row;
-                newRow[columnDef.colTag] = input;
-                console.log(columnDef);
-                console.log(newRow);
-                console.log(input);
-
-            },
             beforeColumnAdd: function () {
                 console.log("beforeColumnAdd callback called!");
                 addMe();
@@ -122,7 +170,6 @@ $(function () {
             onSummarySelectCallback: function (result, state) {
                 console.log(result);
                 console.log(state);
-                console.log("Includes " + result.detailRows.length + " detail rows! state:" + state);
             }
         };
         table = React.render(React.createElement(ReactTable, options), document.getElementById("table"));

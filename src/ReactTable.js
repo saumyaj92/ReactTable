@@ -24,19 +24,21 @@ var ReactTable = React.createClass({
         subtotalBy: React.PropTypes.arrayOf(React.PropTypes.object),
         sortBy: React.PropTypes.arrayOf(React.PropTypes.object),
         selectedRows: React.PropTypes.arrayOf(React.PropTypes.string),
-        newIssuesRows: React.PropTypes.arrayOf(React.PropTypes.object),
         rowKey: React.PropTypes.string,
-        dropdownTypeahead: React.PropTypes.object,
+        cellRightClickMenu: React.PropTypes.object,
         /**
          * callbacks that the table accept
          */
         afterColumnRemove: React.PropTypes.func,
         beforeColumnAdd: React.PropTypes.func,
-        onSelectCallback: React.PropTypes.func,
-        onUnselectAllCallback: React.PropTypes.func,
+        onSelectCallback: React.PropTypes.func, // if a detail row is clicked with ctrl key pressed
         onSummarySelectCallback: React.PropTypes.func,
+        onRowClickCallback: React.PropTypes.func, // if a detail row is clicked
+        onSummaryRowClickCallback: React.PropTypes.func,
         onRightClick: React.PropTypes.func,
-        onCellChangeCallback: React.PropTypes.func,
+        afterFilterCallback: React.PropTypes.func,
+        buildFiltersCallback: React.PropTypes.func,
+        checkboxCallback: React.PropTypes.func, // when click checkbox, invoke this callback
         /**
          * props to selectively disable table features
          */
@@ -45,7 +47,12 @@ var ReactTable = React.createClass({
         disableInfiniteScrolling: React.PropTypes.bool,
         disableExporting: React.PropTypes.bool,
         disableGrandTotal: React.PropTypes.bool,
-        enableEditColumn: React.PropTypes.bool,
+        enableScrollPage: React.PropTypes.bool,
+        hideSubtotaledColumns: React.PropTypes.bool,
+        hideSingleSubtotalChild: React.PropTypes.bool,
+        hasCheckbox: React.PropTypes.bool, // has a check box in subtotal column
+        disableRemoveColumn: React.PropTypes.bool, // disable 'remove column' in subMenu
+        disableDownloadPDF: React.PropTypes.bool, // disable 'Download PDF' in subMenu
         /**
          * misc props
          */
@@ -72,14 +79,21 @@ var ReactTable = React.createClass({
         const sortBy = this.state.sortBy;
         const existing = findDefByColTag(sortBy, columnDef.colTag);
         sortType = sortType || (existing && existing.sortType === 'asc' ? 'desc' : 'asc');
-        while (sortBy.length > 0)
-            sortBy.pop();
+        if (sortBy.length > 0) {
+            sortBy.length = 0;
+        }
         sortBy.push({colTag: columnDef.colTag, sortType: sortType});
         var newState = {
             sortBy: sortBy
         };
-        this.state.rootNode.sortNodes(convertSortByToFuncs(this.state.columnDefs, sortBy));
+
+        if (columnDef.colTag === 'subtotalBy') {
+            this.state.rootNode.sortTreeBySubtotals(this.state.subtotalBy, sortType);
+        } else {
+            this.state.rootNode.sortNodes(convertSortByToFuncs(this.state.columnDefs, sortBy));
+        }
         newState.rootNode = this.state.rootNode;
+        newState.buildRasterizedData = true;
         this.setState(newState);
 
     },
@@ -101,6 +115,8 @@ var ReactTable = React.createClass({
         };
         this.state.rootNode.sortNodes(convertSortByToFuncs(this.state.columnDefs, sortBy));
         newState.rootNode = this.state.rootNode;
+        newState.buildRasterizedData = true;
+
         this.setState(newState);
     },
     /**
@@ -114,10 +130,10 @@ var ReactTable = React.createClass({
          * do not set subtotalBy or sortBy to blank array - simply pop all elements off, so it won't disrupt external reference
          */
         const sortBy = this.state.sortBy;
-        while (sortBy.length > 0)
-            sortBy.pop();
+        sortBy.length = 0;
         newState.sortBy = sortBy;
         newState.rootNode = createNewRootNode(this.props, this.state);
+        newState.buildRasterizedData = true;
         this.setState(newState);
     },
     handleColumnFilter: ReactTableHandleColumnFilter,
@@ -129,17 +145,15 @@ var ReactTable = React.createClass({
     handleSubtotalBy: ReactTableHandleSubtotalBy,
     handleClearSubtotal: ReactTableHandleClearSubtotal,
     handlePageClick: ReactTableHandlePageClick,
-    handleShowAllRows: ReactTableHandleShowAllRows,
     handleSelect: ReactTableHandleSelect,
-    handleShowSelected: ReactTableHandleShowSelected,
-    handleUnselect: ReactTableHandleUnselectAll,
     handleCollapseAll: function () {
         this.state.rootNode.foldSubTree();
         this.state.rootNode.collapseImmediateChildren();
         this.setState({
             currentPage: 1,
             lowerVisualBound: 0,
-            upperVisualBound: this.props.pageSize
+            upperVisualBound: this.props.pageSize,
+            buildRasterizedData: true
         });
     },
     handleExpandAll: function () {
@@ -147,7 +161,8 @@ var ReactTable = React.createClass({
         this.setState({
             currentPage: 1,
             lowerVisualBound: 0,
-            upperVisualBound: this.props.pageSize
+            upperVisualBound: this.props.pageSize,
+            buildRasterizedData: true
         });
     },
     handleDownload: function (type) {
@@ -159,12 +174,16 @@ var ReactTable = React.createClass({
 
         var rasterizedData = rasterizeTree({
             node: this.state.rootNode,
-            firstColumn: firstColumn,
-            selectedDetailRows: this.state.selectedDetailRows
+            firstColumn: firstColumn
         });
 
+        var firstColumnLabel = buildFirstColumnLabel(this);
         $.each(this.props.columnDefs, function () {
-            objToExport.headers.push(this.text);
+            if (this.colTag === 'subtotalBy') {
+                objToExport.headers.push(firstColumnLabel);
+            } else {
+                objToExport.headers.push(this.text);
+            }
         });
 
         $.each(rasterizedData, function () {
@@ -191,7 +210,7 @@ var ReactTable = React.createClass({
             state = false;
         }
         else {
-            selectedDetailRows[key] = 1;
+            selectedDetailRows[key] = true;
             state = true;
         }
         this.setState({
@@ -215,7 +234,7 @@ var ReactTable = React.createClass({
     },
     forceSort: function () {
         this.state.rootNode.sortNodes(convertSortByToFuncs(this.state.columnDefs, this.state.sortBy));
-        this.setState({});
+        this.setState({buildRasterizedData: true});
     },
     getDetailToggleState: function (key) {
         return this.state.selectedDetailRows[key] && true;
@@ -248,24 +267,28 @@ var ReactTable = React.createClass({
         if (idx)
             columnDefs.splice(idx + 1, 0, columnDef);
         else
-            columnDefs.push(columnDef)
+            columnDefs.push(columnDef);
         /**
          * we will want to perform an aggregation
          */
         recursivelyAggregateNodes(this.state.rootNode, this.state);
         this.setState({
-            columnDefs: columnDefs
+            columnDefs: columnDefs,
+            buildRasterizedData: true
         });
     },
     handleScroll: function (e) {
         const $target = $(e.target);
         const scrollTop = $target.scrollTop();
+
+        if (scrollTop == this.state.lastScrollTop) {
+            // scroll horizentally
+            return;
+        }
+
         const height = $target.height();
         const totalHeight = $target.find("tbody").height();
         const avgRowHeight = totalHeight / $target.find("tbody > tr").length;
-        if(this.state.pageSize === undefined){
-            this.state.pageSize = this.props.pageSize;
-        }
         /**
          * always update lastScrollTop on scroll event - it helps us determine
          * whether the next scroll event is up or down
@@ -275,17 +298,17 @@ var ReactTable = React.createClass({
          * we determine the correct display boundaries by keeping the distance between lower and upper visual bound
          * to some constant multiple of pageSize
          */
-        const rowDisplayBoundry = 2 * this.state.pageSize;
+        const rowDisplayBoundry = 2 * this.props.pageSize;
         if (scrollTop < this.state.lastScrollTop && scrollTop <= 0) {
             // up scroll limit triggered
-            newState.lowerVisualBound = Math.max(this.state.lowerVisualBound - this.state.pageSize, 0);
+            newState.lowerVisualBound = Math.max(this.state.lowerVisualBound - this.props.pageSize, 0);
             newState.upperVisualBound = newState.lowerVisualBound + rowDisplayBoundry;
             /**
              * if top most rows reached, do nothing, otherwise reset scrollTop to preserve current view
              */
             if (!(newState.lowerVisualBound === 0))
                 setTimeout(function () {
-                    $target.scrollTop(Math.max(scrollTop + this.state.pageSize * avgRowHeight, 0));
+                    $target.scrollTop(Math.max(scrollTop + this.props.pageSize * avgRowHeight, 0));
                 }.bind(this));
 
         } else if (scrollTop > this.state.lastScrollTop && (scrollTop + height) >= totalHeight) {
@@ -294,7 +317,7 @@ var ReactTable = React.createClass({
              * we either increment upperVisualBound by a single page (specified via props.pageSize) or the max rows that can be displayed
              * we know the end has been reached if upperVisualBound + pageSize > maxRows
              */
-            newState.upperVisualBound = this.state.upperVisualBound + this.state.pageSize > this.state.maxRows ? this.state.maxRows : this.state.upperVisualBound + this.state.pageSize;
+            newState.upperVisualBound = this.state.upperVisualBound + this.props.pageSize > this.state.maxRows ? this.state.maxRows : this.state.upperVisualBound + this.props.pageSize;
             newState.lowerVisualBound = Math.max(newState.upperVisualBound - rowDisplayBoundry, 0);
             /**
              * if previous upperVisualBound is the default (props.pageSize), it could actually be greater than the current
@@ -312,10 +335,8 @@ var ReactTable = React.createClass({
     /* ----------------------------------------- */
 
     componentDidMount: function () {
-        if(this.state.disableInfiniteScrolling === undefined){
-            this.state.disableInfiniteScrolling = this.props.disableInfiniteScrolling;
-        }
-        if (!this.state.disableInfiniteScrolling)
+        //TODO: should listen on onWheel and give some conditions
+        if (!this.props.disableInfiniteScrolling)
             $(this.getDOMNode()).find(".rt-scrollable").get(0).addEventListener('scroll', this.handleScroll);
         setTimeout(function () {
             adjustHeaders.call(this);
@@ -328,66 +349,149 @@ var ReactTable = React.createClass({
         window.addEventListener('resize', adjustHeaders.bind(this));
         var $node = $(this.getDOMNode());
         $node.find(".rt-scrollable").bind('scroll', function () {
+            //when scroll table body horizontally, scroll header and footer also
             $node.find(".rt-headers").css({'overflow': 'auto'}).scrollLeft($(this).scrollLeft());
             $node.find(".rt-headers").css({'overflow': 'hidden'});
+
+            $node.find(".rt-grand-total").css({'overflow': 'auto'}).scrollLeft($(this).scrollLeft());
+            $node.find(".rt-grand-total").css({'overflow': 'hidden'});
         });
         bindHeadersToMenu($node);
+
+        // build dropdown list for column filter
+        buildFilterData.call(this, false);
     },
     componentWillMount: function () {
     },
     componentWillUnmount: function () {
-        if(this.state.disableInfiniteScrolling === undefined){
-            this.state.disableInfiniteScrolling = this.props.disableInfiniteScrolling;
-        }
         window.removeEventListener('resize', adjustHeaders.bind(this));
-        if (this.state.disableInfiniteScrolling)
+        if (this.props.disableInfiniteScrolling)
             $(this.getDOMNode()).find(".rt-scrollable").get(0).removeEventListener('scroll', this.handleScroll);
     },
     componentDidUpdate: function () {
+        if (this.state.scrollToLeft) {
+            this.state.scrollToLeft = false;
+            $(this.refs.scrollBody.getDOMNode()).scrollLeft(0);
+        }
+        //console.time('adjust headers');
         adjustHeaders.call(this);
+        //console.timeEnd('adjust headers');
         bindHeadersToMenu($(this.getDOMNode()));
     },
-    render: function () {
-        const rasterizedData = rasterizeTree({
-            node: this.state.rootNode,
-            firstColumn: this.state.columnDefs[0],
-            selectedDetailRows: this.state.selectedDetailRows
-        });
-        // maxRows is referenced later during event handling to determine upperVisualBound
-        this.state.maxRows = rasterizedData.length;
 
-        if(this.state.disableInfiniteScrolling === undefined){
-            this.state.disableInfiniteScrolling = this.props.disableInfiniteScrolling;
+    /*******public API, called outside react table*/
+    addFilter: function (columnDefToFilterBy, filterData) {
+        this.handleColumnFilter.call(this, columnDefToFilterBy, filterData);
+    },
+    removeFilter: function ReactTableHandleRemoveFilter(colDef, dontSet) {
+        this.handleClearFilter.call(this, colDef, dontSet);
+    },
+    removeAllFilter: function () {
+        this.handleClearAllFilters.call(this);
+    },
+    exportDataWithSubtotaling: function () {
+        var dataCopy = rasterizeTree({
+            node: this.state.rootNode,
+            firstColumn: this.state.columnDefs[0]
+        }, this.state.subtotalBy.length > 0, true);
+
+        var data = [];
+        for (var i = 0; i < dataCopy.length; i++) {
+            //shallow copy each row
+            var row = dataCopy[i];
+            if (row.treeNode) {
+                delete row.treeNode
+            }
+            if (row.parent) {
+                delete row.parent;
+            }
+        }
+        return dataCopy;
+    },
+    recreateTable: function(){
+        this.state.rootNode = createNewRootNode(this.props, this.state);
+    },
+    exportDataWithoutSubtotaling: function () {
+        var dataCopy = rasterizeTree({
+            node: this.state.rootNode,
+            firstColumn: this.state.columnDefs[0]
+        }, this.state.subtotalBy.length > 0, true, true);
+
+        var data = [];
+        for (var i = 0; i < dataCopy.length; i++) {
+            //shallow copy each row
+            var row = $.extend({}, dataCopy[i]);
+            if (row.treeNode) {
+                delete row.treeNode
+            }
+            if (row.parent) {
+                delete row.parent;
+            }
+            data.push(row)
+        }
+        return data;
+    },
+    refresh: function () {
+        this.setState({buildRasterizedData: true});
+    },
+    getSubtotals: function () {
+        return this.state.subtotalBy;
+    },
+    getSorts: function () {
+        return this.state.sortBy;
+    },
+    checkAllRows: function (checked) {
+        checkAllChildren(this.state.rootNode, checked);
+        this.setState({});
+    },
+    refreshSubtotalRow: function () {
+        recursivelyAggregateNodes(this.state.rootNode, this.state);
+        this.setState({buildRasterizedData: true});
+    },
+    render: function () {
+        //console.time('fresh: ');
+
+        if (!this.state.rasterizedData || this.state.buildRasterizedData) {
+            rasterizeTreeForRender.call(this);
         }
 
+        const rasterizedData = this.state.rasterizedData;
         // TODO merge lower&upper visual bound into state, refactor getPaginationAttr
         var paginationAttr = getPaginationAttr(this, rasterizedData);
+        var grandTotal = this.state.grandTotal;
+
         var rowsToDisplay = [];
-        if (this.state.disableInfiniteScrolling)
+        if (this.props.disableInfiniteScrolling)
             rowsToDisplay = rasterizedData.slice(paginationAttr.lowerVisualBound, paginationAttr.upperVisualBound + 1).map(rowMapper, this);
         else
             rowsToDisplay = rasterizedData.slice(this.state.lowerVisualBound, this.state.upperVisualBound + 1).map(rowMapper, this);
 
         var headers = buildHeaders(this);
+        this.state.rowNumToDisplay = rowsToDisplay.length;
 
-        var containerStyle = {};
-        if (this.props.height && parseInt(this.props.height) > 0)
-            containerStyle.height = this.props.height;
+        var tableBodyContainerStyle = {};
+        if (this.props.height && parseInt(this.props.height) > 0) {
+            tableBodyContainerStyle.height = this.props.height;
+        }
 
         if (this.props.disableScrolling)
-            containerStyle.overflowY = "hidden";
+            tableBodyContainerStyle.overflowY = "hidden";
+
+        //console.timeEnd('fresh: ');
 
         return (
             <div id={this.state.uniqueId} className="rt-table-container">
                 {headers}
-                <div style={containerStyle} className="rt-scrollable">
-                    <table className="rt-table">
+                <div ref="scrollBody" style={tableBodyContainerStyle} className="rt-scrollable"
+                    onWheel={this.props.enableScrollPage ? scrollPage.bind(this, paginationAttr) : null}>
+                    <table ref="tableBody" className="rt-table">
                         <tbody>
                         {rowsToDisplay}
                         </tbody>
                     </table>
                 </div>
-                {this.state.disableInfiniteScrolling ? buildFooter(this, paginationAttr) : null}
+                {this.props.disableGrandTotal === true ? null : grandTotal}
+                {buildFooter.call(this, paginationAttr, rasterizedData.length)}
             </div>
         );
     }
@@ -399,135 +503,124 @@ var ReactTable = React.createClass({
 var Row = React.createClass({
     render: function () {
         const cx = React.addons.classSet;
-        var cells = [buildFirstCellForRow.call(this)];
-        for (var i = 1; i < this.props.columnDefs.length; i++) {
-            var columnDef = this.props.columnDefs[i];
-            var displayInstructions = buildCellLookAndFeel(columnDef, this.props.data);
-            var classes = cx(displayInstructions.classes);
-            // easter egg - if isLoading is set to true on columnDef - spinners will show up instead of blanks or content
-            var displayContent = columnDef.isLoading ?
-                "Loading ... " : displayInstructions.value;
+        var cells = [];
+        var table = this.props.table;
+        var isGrandTotal = false;
+        if (!this.props.data.isDetail && this.props.data.sectorPath.length == 1 && this.props.data.sectorPath[0] == 'Grand Total') {
+            isGrandTotal = true;
+        }
 
-            // convert and format dates
-            if (columnDef && columnDef.format && columnDef.format.toLowerCase() === "date") {
-                if (typeof displayContent === "number") // if displayContent is a number, we assume displayContent is in milliseconds
-                    displayContent = new Date(displayContent).toLocaleString('en',{timeZone : 'UTC',year: 'numeric', day:'numeric',month:'numeric'});
+        for (var i = 0; i < this.props.columnDefs.length; i++) {
+            var columnDef = this.props.columnDefs[i];
+
+            if (table.props.hideSubtotaledColumns) {
+                var subtotalled = table.state.subtotalBy.some(function (subtotalColumn) {
+                    return subtotalColumn.colTag === columnDef.colTag;
+                });
+                if (subtotalled) {
+                    continue;
+                }
             }
-            // determine cell content, based on whether a cell templating callback was provided
-            if (columnDef.cellTemplate)
-                displayContent = columnDef.cellTemplate.call(this, this.props.data, columnDef, displayContent);
-            if(this.props.data.isDetail)
-            cells.push(
-                <td
-                    className={classes}
-                    onClick={columnDef.onCellSelect ? columnDef.onCellSelect.bind(null, this.props.data[columnDef.colTag], columnDef, i) : null}
-                    onContextMenu={this.props.onRightClick ? this.props.onRightClick.bind(null, this.props.data, columnDef) : null}
-                    style={displayInstructions.styles}
-                    key={columnDef.colTag}
-                    onDoubleClick={this.props.filtering && this.props.filtering.doubleClickCell ?
-                                   this.props.handleColumnFilter(null, columnDef) : null}>
-                    {this.props.enableEditColumn && (displayContent==='' || displayContent===null || displayContent===undefined) ?
-                        (_.indexOf(_.keys(this.props.dropdownTypeahead),columnDef.colTag) >= 0 ? this.getDropdown(this.props.dropdownTypeahead, columnDef.colTag)
-                        :<input type="text" id={columnDef.colTag} defaultValue={displayContent}
+
+            if (i === 0 && table.state.subtotalBy.length > 0) {
+                // generate subtotal column
+                cells.push(buildFirstCellForSubtotalRow.call(this, isGrandTotal, !this.props.data.isDetail));
+            } else {
+                var displayInstructions = buildCellLookAndFeel(columnDef, this.props.data);
+                var classes = cx(displayInstructions.classes);
+                // easter egg - if isLoading is set to true on columnDef - spinners will show up instead of blanks or content
+                var displayContent = columnDef.isLoading ? "Loading ... " : displayInstructions.value;
+                // determine cell content, based on whether a cell templating callback was provided
+                if (columnDef.cellTemplate)
+                    displayContent = columnDef.cellTemplate.call(this, this.props.data, columnDef, displayContent);
+                if (isGrandTotal) {
+                    //generate cells in grand total row
+                    var grandTotalCellStyle = {textAlign: displayInstructions.styles.textAlign};
+                    if (displayContent) {
+
+                        grandTotalCellStyle.width = displayContent.length / 2 + 2 + "em";
+                    }
+                    cells.push(
+                        <div className={classes + " rt-grand-total-cell"} key={columnDef.colTag}>
+                            <div className="rt-grand-total-cell-content" style={grandTotalCellStyle}>
+                                {displayContent ? displayContent : <span>&nbsp;</span>}
+                            </div>
+                        </div>
+                    );
+                }
+                else {
+                    cells.push(
+                        <td
+                            className={classes}
+                            ref={columnDef.colTag}
+                            onClick={columnDef.onCellSelect ? columnDef.onCellSelect.bind(null, this.props.data[columnDef.colTag], columnDef, i) : null}
+                            onContextMenu={this.props.cellRightClickMenu ? openCellMenu.bind(this, columnDef) : this.props.onRightClick ? this.props.onRightClick.bind(null, this.props.data, columnDef) : null}
                             style={displayInstructions.styles}
-                                placeholder={columnDef.format === 'DATE' ? 'MM/DD/YYYY' : null}
-                            onBlur={this.saveDataField.bind(this, columnDef,this.props.data, this.props.onCellChangeCallback)}
-                            onKeyPress={this.checkInput.bind(this,columnDef)}/>)
-                        : displayContent}
-                </td>
-            );
-            else{
-                cells.push(
-                    <td
-                        className={classes}
-                        onClick={columnDef.onCellSelect ? columnDef.onCellSelect.bind(null, this.props.data[columnDef.colTag], columnDef, i) : null}
-                        onContextMenu={this.props.onRightClick ? this.props.onRightClick.bind(null, this.props.data, columnDef) : null}
-                        style={displayInstructions.styles}
-                        key={columnDef.colTag}
-                        onDoubleClick={this.props.filtering && this.props.filtering.doubleClickCell ?
-                            this.props.handleColumnFilter(null, columnDef) : null}>
-                        {displayContent}
-                    </td>
-                );
+                            key={columnDef.colTag}
+                            //if define doubleClickCallback, invoke this first, otherwise check doubleClickFilter
+                            onDoubleClick={columnDef.onDoubleClick ? columnDef.onDoubleClick.bind(null, this.props.data[columnDef.colTag], columnDef, i, this.props.data) : this.props.filtering && this.props.filtering.doubleClickCell ?
+                                this.props.handleColumnFilter(null, columnDef) : null }>
+                            {displayContent}
+                            {this.props.cellRightClickMenu && this.props.data.isDetail ? buildCellMenu(this.props.cellRightClickMenu, this.props.data, columnDef, this.props.columnDefs) : null}
+                        </td>
+                    );
+                }
             }
         }
+
         classes = cx({
             'selected': this.props.isSelected && this.props.data.isDetail,
             'summary-selected': this.props.isSelected && !this.props.data.isDetail,
-            'highlight-selected': (_.indexOf(this.props.newIssuesRows,this.props.data)!== -1 || _.indexOf(_.pluck(this.props.newIssuesRows, 'cusip'),this.props.data.cusip)!== -1) && this.props.data.isDetail
+            'group-background': !this.props.data.isDetail
         });
+
+        if (isGrandTotal) {
+            // add a dummy column to the last to fit the vertical scroll bar
+            cells.push(
+                <span className="rt-grand-total-cell">
+                </span>);
+
+            return (<div className="rt-grand-total">
+                {cells}
+            </div>)
+        } else
         // apply extra CSS if specified
-        return (<tr onClick={this.props.onSelect.bind(null, this.props.data)}
-                    className={classes} style={this.props.extraStyle}>{cells}</tr>);
-    },
-
-    onColTagDropdownSelect: function(colTag, event){
-        this.saveDataField(_.filter(this.props.columnDefs, function(column){return column.colTag === colTag})[0], this.props.data, this.props.onCellChangeCallback, event);
-    },
-
-    getDropdown: function(dropdownTypeahead, colTag){
-        var options = [];
-        options.push(<option value={''} key={0}/>);
-        for(var i = 1; i < dropdownTypeahead[colTag].length; i++){
-            options.push(<option value={dropdownTypeahead[colTag][i]} key={i}>{dropdownTypeahead[colTag][i]}</option>);
-        }
-        return <select onChange={this.onColTagDropdownSelect.bind(this,colTag)}>{options}</select>;
-    },
-
-    saveDataField: function(columnDef, row, cellChangeCallback, event){
-        var newCellData = event.target.value;
-        var thisWrapper = this;
-        if(columnDef.format === 'DATE'){
-            if(newCellData!== '' && !/^([0]*[1-9])|([1][0-2])\/([0]*[1-3]|[1,2][0-9])\/\d{4}$/.test(newCellData)){
-                this.getDOMNode().querySelectorAll("#"+columnDef.colTag)[0].style["backgroundColor"] = '#ffb7b7';
-                event.target.value = '';
-                //Callback to save the changed input in original data.
-                cellChangeCallback(columnDef,row, "");
-            }
-            else {
-                this.getDOMNode().querySelectorAll("#"+columnDef.colTag)[0].style["backgroundColor"] = 'white';
-                cellChangeCallback(columnDef,row, newCellData);
-            }
-        }
-        else{
-            //Callback to save the changed input in original data.
-            var returnedCallbackValue = cellChangeCallback(columnDef, row, newCellData);
-            if(returnedCallbackValue && _.isFunction(returnedCallbackValue.then)){
-                returnedCallbackValue.then(function (result) {
-                    thisWrapper.forceUpdate();
-                    adjustHeaders.call(thisWrapper.props.tableState);
-                })
-            }
-        }
-    },
-    checkInput: function (columnDef, event) {
-        if(columnDef.format){
-            switch(columnDef.format){
-                case "number":
-                case "NUMERICAL":
-                    return event.charCode >= 46 && event.charCode <= 57; //also want to include period sign
-                case "CATEGORICAL":
-                    return (event.charCode > 64 && event.charCode < 91) || (event.charCode > 96 && event.charCode < 123);
-                case "DATE":
-                    return event.charCode >= 47 && event.charCode <= 57;
-                default:
-                    return event.charCode;
-            }
-        }
-        else{
-            return event.charCode;
-        }
+            return (<tr onClick={this.props.onSelect.bind(null, this.props.data)}  onMouseDown={mouseDown.bind(this, this.props.data)}
+                onMouseUp={mouseUp.bind(this, this.props.data)}
+                className={classes} style={this.props.extraStyle}>{cells}</tr>);
     }
 });
+
+function mouseDown(row, event) {
+    this.props.table.state.mouseDown = {row: row};
+}
+
+function mouseUp(mouseUpRow, event) {
+    if (mouseUpRow !== this.props.table.state.mouseDown.row) {
+        var mouseDownRow = this.props.table.state.mouseDown.row;
+        this.props.table.state.mouseDown = null;
+        var rowKey = this.props.table.props.rowKey;
+        if (!rowKey || !mouseUpRow[rowKey])
+            return;
+
+        var parent = mouseUpRow.parent;
+        var start = Math.min(mouseDownRow.indexInParent, mouseUpRow.indexInParent);
+        var end = Math.max(mouseDownRow.indexInParent, mouseUpRow.indexInParent);
+        this.props.table.state.selectedDetailRows = {};
+        for (var i = start; i <= end; i++) {
+            var row = parent.ultimateChildren[i];
+            this.props.table.toggleSelectDetailRow(row[rowKey]);
+        }
+
+        this.props.table.setState({});
+    }
+}
 
 var PageNavigator = React.createClass({
     handleClick: function (index, event) {
         event.preventDefault();
         if (index <= this.props.numPages && index >= 1)
             this.props.handleClick(index);
-    },
-    showAllRows: function(){
-        this.props.handleShowAllRows();
     },
     render: function () {
         var self = this;
@@ -546,19 +639,17 @@ var PageNavigator = React.createClass({
                 </li>
             )
         });
+
         return (
             <ul className={prevClass} className="pagination pull-right">
-                <li>
-                    <a onClick={this.showAllRows}>Show All</a>
-                </li>
                 <li className={nextClass}>
                     <a className={prevClass}
-                       onClick={this.props.handleClick.bind(null, this.props.activeItem - 1)}>&laquo;</a>
+                        onClick={this.props.handleClick.bind(null, this.props.activeItem - 1)}>&laquo;</a>
                 </li>
                 {items}
                 <li className={nextClass}>
                     <a className={nextClass}
-                       onClick={this.props.handleClick.bind(null, this.props.activeItem + 1)}>&raquo;</a>
+                        onClick={this.props.handleClick.bind(null, this.props.activeItem + 1)}>&raquo;</a>
                 </li>
             </ul>
         );
@@ -575,9 +666,8 @@ var SubtotalControl = React.createClass({
         this.setState({userInputBuckets: event.target.value});
     },
     handleKeyPress: function (event) {
-        if (event.keyCode == 13) {
+        if (event.charCode == 13) {
             event.preventDefault();
-            event.stopPropagation();
             this.props.table.handleSubtotalBy(this.props.columnDef, this.state.userInputBuckets);
         }
     },
@@ -588,27 +678,142 @@ var SubtotalControl = React.createClass({
     },
     render: function () {
         var table = this.props.table, columnDef = this.props.columnDef;
-        var subMenuAttachment = columnDef.format == "number" || columnDef.format == "currency" ?
-            (
+        var subMenuAttachment = null;
+        if (columnDef.format == "number" || columnDef.format == "currency") {
+            subMenuAttachment =
                 <div className="menu-item-input" style={{"position": "absolute", "top": "-50%", "right": "100%"}}>
                     <label style={{"display": "block"}}>Enter Bucket(s)</label>
-                    <input tabIndex="1" onKeyDown={this.handleKeyPress} onChange={this.handleChange}
-                           placeholder="ex: 1,10,15"/>
+                    <input tabIndex="1" onKeyPress={this.handleKeyPress} onChange={this.handleChange}
+                        placeholder="ex: 1,10,15"/>
                     <a tabIndex="2" style={{"display": "block"}}
-                       onClick={table.handleSubtotalBy.bind(null, columnDef, this.state.userInputBuckets)}
-                       className="btn-link">Ok</a>
+                        onClick={table.handleSubtotalBy.bind(null, columnDef, this.state.userInputBuckets)}
+                        className="btn-link">Ok</a>
                 </div>
-            ) : null;
+
+
+        }
+
+        if (columnDef.format == DATE_FORMAT && columnDef.formatInstructions != null) {
+            subMenuAttachment =
+                <div className="menu-item-input" style={{"position": "absolute", "top": "-50%", "right": "100%"}}>
+                    <label style={{"display": "block"}}>Enter Bucket(s)</label>
+                    <input tabIndex="1" onKeyPress={this.handleKeyPress} onChange={this.handleChange}
+                        placeholder="ex: 1/8/2013, 5/12/2014, 3/10/2015"/>
+                    <a tabIndex="2" style={{"display": "block"}}
+                        onClick={table.handleSubtotalBy.bind(null, columnDef, this.state.userInputBuckets)}
+                        className="btn-link">Ok</a>
+                </div>
+
+        }
+
         return (
             <div
                 onClick={subMenuAttachment == null ? table.handleSubtotalBy.bind(null, columnDef, null) : this.handleClick}
                 style={{"position": "relative"}} className="menu-item menu-item-hoverable">
-                <div><i className="fa fa-plus"></i> Add Subtotal</div>
+                <div>
+                    <span>
+                        <i className="fa fa-plus"></i>
+                    &nbsp;Add Subtotal</span>
+                </div>
                 {subMenuAttachment}
             </div>
         );
     }
 });
+
+
+//Subtotal logic for dates
+
+var SubtotalControlForDates = React.createClass({
+    displayName: "SubtotalControlForDates",
+    getInitialState: function () {
+        return {
+            userInputBuckets: ""
+        }
+    },
+    handleChange: function (event) {
+        this.setState({userInputBuckets: event.target.value});
+    },
+    handleKeyPress: function (event) {
+        if (event.charCode == 13) {
+            event.preventDefault();
+            this.props.table.handleSubtotalBy(this.props.columnDef, this.state.userInputBuckets);
+        }
+    },
+    handleClick: function (event) {
+        event.stopPropagation();
+        var $node = $(this.getDOMNode());
+        $node.children(".menu-item-input").children("input").focus();
+    },
+    render: function () {
+        var table = this.props.table, columnDef = this.props.columnDef;
+        var subMenuAttachment = null;
+        var freq = this.props.freq;
+        if (freq == WEEKLY) {
+            return React.createElement("div", {
+                    onClick: subMenuAttachment == null ? table.handleSubtotalBy.bind(null, columnDef, WEEKLY) : this.handleClick,
+                    style: {"position": "relative"}, className: "menu-item menu-item-hoverable"
+                },
+                React.createElement("div", null,
+                    React.createElement("span", null,
+                        WEEKLY)
+                ),
+                subMenuAttachment
+            );
+        }
+        if (freq == MONTHLY) {
+            return React.createElement("div", {
+                    onClick: subMenuAttachment == null ? table.handleSubtotalBy.bind(null, columnDef, MONTHLY) : this.handleClick,
+                    style: {"position": "relative"}, className: "menu-item menu-item-hoverable"
+                },
+                React.createElement("div", null,
+                    React.createElement("span", null,
+                        MONTHLY)
+                ),
+                subMenuAttachment
+            );
+        }
+
+        if (freq == DAILY) {
+            return React.createElement("div", {
+                    onClick: subMenuAttachment == null ? table.handleSubtotalBy.bind(null, columnDef, DAILY) : this.handleClick,
+                    style: {"position": "relative"}, className: "menu-item menu-item-hoverable"
+                },
+                React.createElement("div", null,
+                    React.createElement("span", null,
+                        DAILY)
+                ),
+                subMenuAttachment
+            );
+        }
+
+        if (freq == QUARTERLY) {
+            return React.createElement("div", {
+                    onClick: subMenuAttachment == null ? table.handleSubtotalBy.bind(null, columnDef, QUARTERLY) : this.handleClick,
+                    style: {"position": "relative"}, className: "menu-item menu-item-hoverable"
+                },
+                React.createElement("div", null,
+                    React.createElement("span", null,
+                        QUARTERLY)
+                ),
+                subMenuAttachment
+            );
+        }
+
+        if (freq == YEARLY) {
+            return React.createElement("div", {
+                    onClick: subMenuAttachment == null ? table.handleSubtotalBy.bind(null, columnDef, YEARLY) : this.handleClick,
+                    style: {"position": "relative"}, className: "menu-item menu-item-hoverable"
+                },
+                React.createElement("div", null,
+                    React.createElement("span", null,
+                        YEARLY)
+                ),
+                subMenuAttachment
+            );
+        }
+    }
+})
 
 /*
  * ----------------------------------------------------------------------
@@ -639,7 +844,6 @@ function rowMapper(row) {
     var rowKey = this.props.rowKey;
     var generatedKey = generateRowKey(row, rowKey);
     return (<Row
-        tableState={this}
         key={generatedKey}
         data={row}
         extraStyle={resolveExtraStyles(generatedKey, this.props.extraStyle)}
@@ -649,16 +853,14 @@ function rowMapper(row) {
         toggleHide={this.handleToggleHide}
         columnDefs={this.state.columnDefs}
         filtering={this.props.filtering}
-        onCellChangeCallback={this.props.onCellChangeCallback}
-        enableEditColumn={this.props.enableEditColumn}
-        dropdownTypeahead={this.props.dropdownTypeahead}
-        newIssuesRows={this.props.newIssuesRows}
         handleColumnFilter={this.handleColumnFilter.bind}
-        />);
+        cellRightClickMenu={this.props.cellRightClickMenu}
+        table={this}
+    />);
 }
 
 function docClick(e) {
-    adjustHeaders.call(this);
+    //adjustHeaders.call(this);
     // Remove filter-in-place boxes if they are open and they weren't clicked on
     if (!jQuery.isEmptyObject(this.state.filterInPlace)) {
         if (!($(e.target).hasClass("rt-headers-container") || $(e.target).parents(".rt-headers-container").length > 0)) {
@@ -670,36 +872,60 @@ function docClick(e) {
 }
 
 function adjustHeaders(adjustCount) {
+    if (this.state.rowNumToDisplay == 0) {
+        //if table has no data, don't change column width
+        return;
+    }
+
     var id = this.state.uniqueId;
     if (!(adjustCount >= 0))
         adjustCount = 0;
     var counter = 0;
     var headerElems = $("#" + id + " .rt-headers-container");
+    var headerContainerWidth = $("#" + id + ' .rt-headers-grand-container').width();
     var padding = parseInt(headerElems.first().find(".rt-header-element").css("padding-left"));
     padding += parseInt(headerElems.first().find(".rt-header-element").css("padding-right"));
+
+    var grandTotalFooter = $('#' + id + ' .rt-grand-total');
+    grandTotalFooter.width(headerContainerWidth);
+    var grandTotalFooterCells = grandTotalFooter.find('.rt-grand-total-cell');
+    var grandTotalFooterCellContents = grandTotalFooter.find('.rt-grand-total-cell-content');
     var adjustedSomething = false;
 
+    var table = this;
     headerElems.each(function () {
         var currentHeader = $(this);
-        var width = $('#' + id + ' .rt-table tr:last td:eq(' + counter + ')').outerWidth() - 1;
+        var headerTextWidthWithPadding = currentHeader.find(".rt-header-anchor-text").width() + padding;
+        var footerCellContentWidth = $(grandTotalFooterCellContents[counter]).width() + 10; // 10 is padding
+        headerTextWidthWithPadding = footerCellContentWidth > headerTextWidthWithPadding ? footerCellContentWidth : headerTextWidthWithPadding;
+
+        if (currentHeader.width() > 0 && headerTextWidthWithPadding > currentHeader.width() + 1) {
+            currentHeader.css("width", headerTextWidthWithPadding + "px");
+            $("#" + id).find("tr:eq(0)").find("td:eq(" + counter + ")").css("min-width", (headerTextWidthWithPadding) + "px");
+            if (counter != (grandTotalFooterCells.length - 1)) {
+                $(grandTotalFooterCells[counter]).css("width", (headerTextWidthWithPadding) + "px");
+            }
+            adjustedSomething = true;
+        }
+
+        var width = $('#' + id + ' .rt-table tr:first td:eq(' + counter + ')').outerWidth() - 1;
         if (counter == 0 && parseInt(headerElems.first().css("border-right")) == 1) {
             width += 1;
         }
-        var headerTextWidthWithPadding = currentHeader.find(".rt-header-anchor-text").width() + padding;
-        if (currentHeader.width() > 0 && headerTextWidthWithPadding > currentHeader.width() + 1) {
-            currentHeader.css("width", headerTextWidthWithPadding + "px");
-            $("#" + id).find("tr").find("td:eq(" + counter + ")").css("min-width", (headerTextWidthWithPadding) + "px");
-            adjustedSomething = true;
-        }
         if (width !== currentHeader.width()) {
             currentHeader.width(width);
+            $(grandTotalFooterCells[counter]).width(width);
             adjustedSomething = true;
         }
         counter++;
     });
 
-    if (!adjustedSomething)
+    if (!adjustedSomething) {
+        grandTotalFooterCellContents.each(function (index, cell) {
+            $(cell).css('width', 'inherit');
+        });
         return;
+    }
 
     // Realign sorting carets
     var downs = headerElems.find(".rt-downward-caret").removeClass("rt-downward-caret");
@@ -739,6 +965,9 @@ function uniqueId(prefix) {
  */
 
 function isRowSelected(row, rowKey, selectedDetailRows, selectedSummaryRows) {
+    if (row.isChecked) {
+        return true;
+    }
     if (rowKey == null)
         return;
     return selectedDetailRows[row[rowKey]] != null || (!row.isDetail && selectedSummaryRows[generateSectorKey(row.sectorPath)] != null);
@@ -750,18 +979,12 @@ function resolveExtraStyles(generatedKey, extraStyles) {
 
 function getPaginationAttr(table, data) {
     var result = {};
-    if(table.state.disablePagination === undefined){
-        table.state.disablePagination = table.props.disablePagination;
-    }
-    if(table.state.pageSize === undefined){
-        table.state.pageSize = table.props.pageSize;
-    }
 
-    if (table.state.disablePagination) {
+    if (table.props.disablePagination) {
         result.lowerVisualBound = 0;
         result.upperVisualBound = data.length
     } else {
-        result.pageSize = table.state.pageSize || 50;
+        result.pageSize = (table.props.pageSize || 50);
         result.maxDisplayedPages = table.props.maxDisplayedPages || 10;
 
         result.pageStart = 1;
@@ -777,6 +1000,12 @@ function getPaginationAttr(table, data) {
         result.lowerVisualBound = (table.state.currentPage - 1) * result.pageSize;
         result.upperVisualBound = Math.min(table.state.currentPage * result.pageSize - 1, data.length);
 
+        if (result.lowerVisualBound > result.upperVisualBound) {
+            // after filter, data length has reduced. if lowerVisualBound is larger than the upperVisualBound, go to first page
+            table.state.currentPage = 1;
+            result.lowerVisualBound = 0;
+            result.upperVisualBound = Math.min(result.pageSize - 1, data.length);
+        }
     }
 
     return result;
@@ -792,5 +1021,177 @@ function computePageDisplayRange(currentPage, maxDisplayedPages) {
     return {
         start: currentPage - leftAllocation - 1,
         end: currentPage + rightAllocation - 1
+    }
+}
+
+function buildFilterData(isUpdate) {
+    setTimeout(function () {
+        if (isUpdate) {
+            this.state.filterDataCount = {};
+            this.state.filterData = {};
+        }
+        for (var i = 0; i < this.props.data.length; i++) {
+            buildFilterDataHelper(this.props.data[i], this.state, this.props);
+        }
+        convertFilterData(this.state.filterDataCount, this.state);
+        if (isUpdate) {
+            this.props.buildFiltersCallback && this.props.buildFiltersCallback(this.state.filterDataCount);
+        }
+    }.bind(this));
+}
+
+/**
+ * generate distinct values for each column
+ * @param row
+ * @param state
+ * @param props
+ */
+function buildFilterDataHelper(row, state, props) {
+    if (row.hiddenByFilter == true) {
+        return;
+    }
+
+    if (!state.filterDataCount) {
+        state.filterDataCount = {};
+    }
+
+    var columnDefs = state.columnDefs;
+    for (var i = 0; i < columnDefs.length; i++) {
+        if (columnDefs[i].format == 'number' || columnDefs[i].colTag == props.rowKey) {
+            continue;
+        }
+
+        var key = columnDefs[i].colTag;
+        if (row[key]) {
+            var hashmap = state.filterDataCount[key] || {};
+            hashmap[row[key]] = typeof hashmap[row[key]] === 'undefined' ? 1 : hashmap[row[key]] + 1;
+            state.filterDataCount[key] = hashmap;
+        }
+    }
+}
+
+/**
+ * convert distinct values in map into an array
+ * @param filterData
+ */
+function convertFilterData(filterDataCount, state) {
+    state.filterData = {};
+    for (var key in filterDataCount) {
+        var map = filterDataCount[key];
+        var arr = [];
+        for (var value in map) {
+            if (value != "") {
+                arr.push(value);
+            }
+        }
+        state.filterData[key] = arr;
+    }
+}
+
+function openCellMenu(columnDef, event) {
+    event.preventDefault();
+    var $cell = $(this.refs[columnDef.colTag].getDOMNode());
+    var cellPosition = $cell.position();
+    var $menu = $cell.find('.rt-cell-menu');
+    if (cellPosition.left !== 0) {
+        $menu.css("left", cellPosition.left + "px");
+    }
+    if (cellPosition.right !== 0) {
+        $menu.css("right", cellPosition.right + "px");
+    }
+    $menu.css('display', 'block');
+
+    $cell.hover(null, function hoveroutCell() {
+        $menu.css('display', 'none');
+    });
+
+    $menu.hover(null, function hoveroutMenu() {
+        $menu.css('display', 'none');
+    });
+}
+
+function buildCellMenu(cellMenu, rowData, currentColumnDef, columnDefs) {
+    if (!rowData[currentColumnDef.colTag]) {
+        return null;
+    }
+
+    var menuItems = [];
+    var menuStyle = {};
+
+    if (cellMenu.style && cellMenu.style.textAlign === 'right') {
+        menuStyle.right = "0%";
+    }
+    else {
+        menuStyle.left = "0%";
+    }
+
+    if (currentColumnDef.rightClickMenuItems) {
+        currentColumnDef.rightClickMenuItems.menus.forEach(function (menu) {
+            menuItems.push(<div className="menu-item" onClick={menu.callback.bind(null, rowData, currentColumnDef, columnDefs)} >{menu.description}</div>);
+            if (menu.followingSeparator) {
+                menuItems.push(<div className="separator"/>);
+            }
+        });
+    }
+    else {
+        cellMenu.menus.forEach(function (menu) {
+            menuItems.push(<div className="menu-item" onClick={menu.callback.bind(null, rowData, currentColumnDef, columnDefs)} >{menu.description}</div>);
+            if (menu.followingSeparator) {
+                menuItems.push(<div className="separator"/>);
+            }
+        });
+    }
+
+
+    return (
+        <div style={menuStyle} className="rt-cell-menu">
+            {menuItems}
+        </div>
+    )
+}
+
+/**
+ * in pagination mode, scroll wheel to change page.
+ * @param paginationAttr
+ * @param event
+ */
+function scrollPage(paginationAttr, event) {
+    event.stopPropagation();
+    var $scrollBody = $(this.refs.scrollBody.getDOMNode());
+    var $tableBody = $(this.refs.tableBody.getDOMNode());
+    var scrollTop = $scrollBody.scrollTop();
+    var scrollBodyheight = $scrollBody.height();
+    var tableHeight = $tableBody.height();
+    var scrollDown = event.deltaY > 0;
+
+    if (scrollTop + scrollBodyheight >= tableHeight && scrollDown || scrollTop === 0 && !scrollDown) {
+        // when scroll to bottom or top of table, prevent scroll whole document.
+        // when at the first page and scroll up, or at the last page and srocll down, scroll the whole document
+        if (!((this.state.currentPage == 1 && !scrollDown) || (this.state.currentPage == paginationAttr.pageEnd && scrollDown))) {
+            event.preventDefault();
+        }
+    }
+
+    if (scrollTop + scrollBodyheight >= tableHeight && this.state.lastScrollTop === scrollTop && scrollDown) {
+        var nextPage = this.state.currentPage + 1;
+    } else if (scrollTop === 0 && this.state.lastScrollTop === 0 && !scrollDown) {
+        nextPage = this.state.currentPage - 1;
+    }
+
+    if (nextPage > 0 && nextPage <= paginationAttr.pageEnd) {
+        this.setState({
+            currentPage: nextPage,
+            lastScrollTop: scrollTop
+        });
+        setTimeout(function () {
+            if (scrollDown) {
+                $scrollBody.scrollTop(0);
+            }
+            else {
+                $scrollBody.scrollTop(tableHeight - scrollBodyheight);
+            }
+        });
+    } else {
+        this.state.lastScrollTop = scrollTop;
     }
 }
